@@ -1,0 +1,40 @@
+[bridge]
+relay_url = "wss://buzz.nuts.cash"
+buzz_bin = "buzz"
+nak_bin = "nak"
+
+# `buzzr setup` fills these in. Only the human PUBLIC key is needed. buzzr
+# generates its bridge and missing agent keys into its private secrets file.
+# human_pubkey = "<64 hex>"
+# compose_file = "~/buzz/docker-compose.yml"
+# managed_secrets_file = "secrets.env"
+# secrets_files = ["secrets.env"]
+bridge_private_key_env = "BUZZR_BRIDGE_PRIVATE_KEY"
+
+# Mirror every project Space, but keep the personal home Space private.
+include_spaces = ["*"]
+exclude_spaces = ["~"]
+channel_type = "stream"
+channel_visibility = "private"
+channel_description = "Mirrored from Herdr Space {space}."
+
+# Safe until bootstrap completes successfully.
+sync_enabled = false
+routing_enabled = false
+auto_provision_agents = false
+archive_closed_spaces = false
+remove_departed_agents = false
+
+respond_to = "owner-only"
+respond_to_allowlist = []
+poll_seconds = 5
+message_poll_seconds = 2
+
+# Existing identities can be imported. Missing live Herdr agents are generated
+# automatically by bootstrap and appended here without exposing their secrets.
+#
+# [identities.sol]
+# display_name = "Sol"
+# aliases = ["sol", "coordinator"]
+# public_key = "<64-character Nostr public key>"
+# private_key_env = "SOL_PRIVATE_KEY"

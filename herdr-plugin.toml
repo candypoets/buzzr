@@ -1,0 +1,56 @@
+id = "buzzr"
+name = "buzzr"
+version = "0.3.0"
+min_herdr_version = "0.8.0"
+description = "Mirror Herdr Spaces and their live agents into Buzz channels."
+platforms = ["linux", "macos"]
+
+[[startup]]
+command = ["bin/buzzr", "daemon"]
+
+[[actions]]
+id = "init"
+title = "Initialize Buzz bridge config"
+command = ["bin/buzzr", "init-config"]
+
+[[actions]]
+id = "bootstrap"
+title = "Provision and activate buzzr"
+command = ["bin/buzzr", "bootstrap"]
+
+[[actions]]
+id = "doctor"
+title = "Check Buzz bridge configuration"
+command = ["bin/buzzr", "doctor"]
+
+[[actions]]
+id = "plan"
+title = "Preview Herdr to Buzz mapping"
+command = ["bin/buzzr", "plan"]
+
+[[actions]]
+id = "reconcile"
+title = "Reconcile Buzz channels"
+command = ["bin/buzzr", "reconcile"]
+
+[[actions]]
+id = "status"
+title = "Show Buzz bridge status"
+command = ["bin/buzzr", "status"]
+
+[[actions]]
+id = "start"
+title = "Start buzzr routing daemon"
+command = ["bin/buzzr", "daemon"]
+
+[[panes]]
+id = "setup"
+title = "Set up buzzr"
+placement = "overlay"
+command = ["bin/buzzr", "setup"]
+
+[[panes]]
+id = "status"
+title = "buzzr"
+placement = "overlay"
+command = ["bin/buzzr", "dashboard"]
