@@ -7,10 +7,14 @@ from pathlib import Path
 from typing import Any
 
 
+STATE_VERSION = 2
+
+
 def default_state() -> dict[str, Any]:
     return {
-        "version": 1,
+        "version": STATE_VERSION,
         "channels": {},
+        "agent_profiles": {},
         "last_seen": {},
         "processed": [],
         "pending": [],
@@ -43,6 +47,7 @@ class StateStore:
         base = default_state()
         if isinstance(value, dict):
             base.update(value)
+        base["version"] = STATE_VERSION
         return base
 
     def save(self, state: dict[str, Any]) -> None:

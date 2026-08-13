@@ -4,7 +4,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from .clients import BuzzClient, CommandError
+from .agent_profiles import AGENT_PROFILE_REFRESH_SECONDS, build_agent_profile_declarations
+from .clients import BuzzClient, CommandError, NostrTools
 from .config import Config
 from .state import StateStore
 from .topology import Topology
@@ -23,6 +24,74 @@ class SyncReport:
     applied: bool
     actions: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+
+
+def _sync_agent_profiles(
+    config: Config,
+    topology: Topology,
+    state: dict[str, Any],
+    report: SyncReport,
+    *,
+    apply: bool,
+    now: int,
+) -> None:
+    cache = state.setdefault("agent_profiles", {})
+    if not isinstance(cache, dict):
+        cache = {}
+        state["agent_profiles"] = cache
+
+    nak: NostrTools | None = None
+    declarations = build_agent_profile_declarations(config, topology, state["channels"])
+    for declaration in declarations:
+        cached = cache.get(declaration.identity_id, {})
+        published_at = cached.get("published_at") if isinstance(cached, dict) else None
+        unchanged = (
+            isinstance(cached, dict)
+            and cached.get("public_key") == declaration.public_key
+            and cached.get("fingerprint") == declaration.fingerprint
+        )
+        fresh = (
+            isinstance(published_at, int)
+            and 0 <= now - published_at < AGENT_PROFILE_REFRESH_SECONDS
+        )
+        if unchanged and fresh:
+            continue
+
+        channel_count = len(declaration.content["channel_ids"])
+        verb = "publish" if apply else "would publish"
+        report.actions.append(
+            f"{verb} agent declaration for {declaration.identity_id} "
+            f"({channel_count} channel{'s' if channel_count != 1 else ''})"
+        )
+        if not apply:
+            continue
+
+        private_key, _auth_tag = config.identity_credentials(declaration.identity_id)
+        if not private_key:
+            report.warnings.append(
+                f"cannot publish agent declaration for {declaration.identity_id}: "
+                "its private key is unavailable"
+            )
+            continue
+        if nak is None:
+            nak = NostrTools(config.bridge.nak_bin)
+        try:
+            nak.publish_agent_profile(
+                config.bridge.relay_url,
+                private_key,
+                declaration.content,
+            )
+        except CommandError as exc:
+            report.warnings.append(
+                f"cannot publish agent declaration for {declaration.identity_id}: {exc}"
+            )
+            continue
+        cache[declaration.identity_id] = {
+            "public_key": declaration.public_key,
+            "fingerprint": declaration.fingerprint,
+            "published_at": now,
+            "channel_ids": list(declaration.content["channel_ids"]),
+        }
 
 
 def reconcile(
@@ -217,6 +286,15 @@ def reconcile(
                 report.actions.append(f"{'archive' if apply else 'would archive'} #{name}")
                 if apply and writer:
                     writer.archive_channel(channel_id)
+
+    _sync_agent_profiles(
+        config,
+        topology,
+        state,
+        report,
+        apply=apply,
+        now=int(time.time()),
+    )
 
     state["last_reconcile_at"] = int(time.time())
     state["last_error"] = None

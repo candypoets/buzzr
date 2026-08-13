@@ -17,6 +17,7 @@ from herdr_buzz.config import (
     update_bridge_settings,
 )
 from herdr_buzz.topology import build_topology, channel_slug, mentioned_pubkeys
+from herdr_buzz.state import StateStore
 
 
 def config() -> Config:
@@ -86,6 +87,16 @@ class TopologyTests(unittest.TestCase):
 
 
 class DotenvTests(unittest.TestCase):
+    def test_state_load_migrates_the_schema_version_and_preserves_data(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "state.json"
+            path.write_text('{"version":1,"channels":{"w1":{"name":"alpha"}}}', encoding="utf-8")
+            loaded = StateStore(root).load()
+            self.assertEqual(loaded["version"], 2)
+            self.assertEqual(loaded["channels"]["w1"]["name"], "alpha")
+            self.assertEqual(loaded["agent_profiles"], {})
+
     def test_secure_dotenv_is_parsed_without_expansion(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "secrets.env"

@@ -47,7 +47,7 @@ The setup overlay and `bootstrap` command perform the same provisioning flow.
 4. records every bridge/agent identity as belonging to the human pubkey in the
    local relay database, without changing an identity already owned by someone
    else;
-5. publishes their Nostr profiles;
+5. publishes their Nostr profiles and Buzz agent-directory declarations;
 6. creates/adopts the Space channels, adds the human as owner and agents as
    bots; and
 7. enables reconciliation, automatic provisioning, and mention routing.
@@ -63,6 +63,13 @@ new live agents, provisions their identities, and reconciles channel membership.
 Only messages signed by `human_pubkey` are routed by default, and only explicit
 Nostr `p`-tag mentions target an agent. The agent sees an opaque one-use reply
 command; no Buzz private key enters its prompt.
+
+On every reconciliation, buzzr also aggregates every live identity's complete
+set of mirrored channels into its replaceable Nostr `kind:10100` declaration.
+This is what makes those bots mentionable in Buzz Desktop. The declaration
+mirrors the bridge's response policy and lists the configured human public key
+when access is owner-only; it never requires the human private key. Unchanged
+declarations are cached and refreshed at most once per day.
 
 Useful checks:
 

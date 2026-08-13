@@ -259,6 +259,24 @@ class NostrTools:
             timeout=45,
         )
 
+    def publish_agent_profile(
+        self,
+        relay_url: str,
+        private_key: str,
+        content: dict[str, Any],
+    ) -> None:
+        """Publish a replaceable Buzz agent-directory event (kind:10100)."""
+
+        if not HEX64_RE.fullmatch(private_key):
+            raise CommandError("refusing to publish with an invalid private key")
+        encoded = json.dumps(content, separators=(",", ":"), sort_keys=True)
+        # The key travels only in the child environment, never argv or logs.
+        self._run(
+            ["event", "--auth", "--kind", "10100", "--content", encoded, relay_url],
+            env_updates={"NOSTR_SECRET_KEY": private_key},
+            timeout=45,
+        )
+
 
 @dataclass
 class LocalBuzzAdmin:
