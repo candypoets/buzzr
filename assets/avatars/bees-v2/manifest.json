@@ -1,0 +1,77 @@
+{
+  "id": "bees-v2",
+  "version": 2,
+  "canvas": {"width": 512, "height": 512},
+  "generator": {
+    "provider": "Recraft",
+    "model": "recraftv4_1",
+    "source_size": "1024x1024",
+    "normalized_size": "512x512",
+    "format": "png-rgba8"
+  },
+  "layers": [
+    {
+      "id": "background",
+      "z": 0,
+      "traits": [
+        {"id": "cream", "file": "layers/background/cream.png", "sha256": "26fc8876af29c418ea6a7b4e0cf44474b16499a4f30489855cd2c2dac3800f4c"},
+        {"id": "confetti", "file": "layers/background/confetti.png", "sha256": "94521b6564c70ccc6ca6da4ad5b8852a299d91c381105ded6020604c49173588"},
+        {"id": "prism", "file": "layers/background/prism.png", "sha256": "5be393562afc148bd5391436ea8a835c8c31619234368acde9844c6f68b8ef66"},
+        {"id": "spark", "file": "layers/background/spark.png", "sha256": "77217227848875fd5b90e0ab8ef96921cd0ba406b2d5b0ea937813726620f3b9"},
+        {"id": "honey", "file": "layers/background/honey.png", "sha256": "957da0d182753de000e0182c44ec5b481b3e3d298d48f21b74a95a9c0ea24cc8"},
+        {"id": "coral", "file": "layers/background/coral.png", "sha256": "bcfa94689ec023f41ceab18d4442fa8ba8a7a1cb6626801ea69448b49c0fb54a"}
+      ]
+    },
+    {
+      "id": "body",
+      "z": 10,
+      "traits": [
+        {"id": "honey", "file": "layers/body/honey.png", "sha256": "20719477ba4e3bd544b89729c877fba6d51cb9954ffc854c74e325eb31291695"},
+        {"id": "mint", "file": "layers/body/mint.png", "sha256": "3cf7bf445000db2201385e6e606550edc48cd0be9c0b607fb4af5ff1db68ce1a"},
+        {"id": "cyan", "file": "layers/body/cyan.png", "sha256": "d71877f464d58323e08dcfb0329a27b5c8c14d56bb9624131769d07f75fa979c"},
+        {"id": "blue", "file": "layers/body/blue.png", "sha256": "1e1a994bab8c90225765d99a8af73f82bef87d23fcd0141dccfba4c84822fdaf"},
+        {"id": "violet", "file": "layers/body/violet.png", "sha256": "8244e4684ed6098d28c73ed5614bc5792352bd55ef27d8809209433b2b5368f8"},
+        {"id": "coral", "file": "layers/body/coral.png", "sha256": "bc99aaeff0588c061386f5ff87753e1fbef85b09d78ec882f718c939cedf0fba"}
+      ]
+    },
+    {
+      "id": "neck",
+      "z": 20,
+      "traits": [
+        {"id": "none"},
+        {"id": "bow", "file": "layers/neck/bow.png", "sha256": "36dfd46981e7a57afbd57615f53787d18be2b67432c0df0fcaafe779b591b9fa"},
+        {"id": "scarf", "file": "layers/neck/scarf.png", "sha256": "3e302c5c69aeeaf554bd2a799cfc36e699e34002148ca0ee0a99d3c092e948b7"},
+        {"id": "bandana", "file": "layers/neck/bandana.png", "sha256": "8f116d2d0945fa5363dce044f7a597b81072ed6e3c8d2b708ca368b22e6c9dae"},
+        {"id": "flower-collar", "file": "layers/neck/flower-collar.png", "sha256": "e923bda7c584b7f9acb53032cb2462a74d73ea27f26bd1d1908b05fae668b2b7"},
+        {"id": "compass", "file": "layers/neck/compass.png", "sha256": "b82f52679a7fab55d833a5d9006d2044d380ff11f603654e4b826fed8f73e2fc"},
+        {"id": "neckerchief", "file": "layers/neck/neckerchief.png", "sha256": "e966ebe8600b99dc30ee9d16091910c1d340a6f6fc39ddc57425cde3d129e94c"}
+      ]
+    },
+    {
+      "id": "eyewear",
+      "z": 30,
+      "traits": [
+        {"id": "none"},
+        {"id": "round", "file": "layers/eyewear/round.png", "sha256": "d95cfb3a6fea8b329057beec0cc68e9876a4b906480564bc0937c0a860e7c4ae"},
+        {"id": "aviator", "file": "layers/eyewear/aviator.png", "sha256": "2f9289cdd4b2af4ac39d3385380f191558ea743579b55807a78594f55e945b01"},
+        {"id": "hearts", "file": "layers/eyewear/hearts.png", "sha256": "7ce1153aeaec740f180ea231c0c3cf60b5732ad197ea9a4d9115d69232561062"},
+        {"id": "visor", "file": "layers/eyewear/visor.png", "sha256": "b915a597c7dce073b1e55b8a636823ddbb8fe9da9745e16512a1efff8ef0c394"},
+        {"id": "stars", "file": "layers/eyewear/stars.png", "sha256": "9892c1770fccbc61f566fd79b1f387333dd19a88063a26cea54677e9395722b2"},
+        {"id": "reader", "file": "layers/eyewear/reader.png", "sha256": "215b38d2d70b245b60974497a5256456335f8708049dfdfcbbfb7cf0b32b856e"}
+      ]
+    },
+    {
+      "id": "headwear",
+      "z": 40,
+      "traits": [
+        {"id": "none"},
+        {"id": "engineer", "file": "layers/headwear/engineer.png", "sha256": "9fb633a62430eb1df2673dbc97d4c5396146033f26e6e9e82be967fc168ef4ca"},
+        {"id": "beret", "file": "layers/headwear/beret.png", "sha256": "ef821053f0ab75f4429c3a3faf8a8f6bcb8eb9c49e344c7407c117c1514a8f56"},
+        {"id": "mushroom", "file": "layers/headwear/mushroom.png", "sha256": "47b8e9eafa74cf7802ef739c037dfec8308fecbf3a7a322d4da7e614f1363889"},
+        {"id": "hood", "file": "layers/headwear/hood.png", "sha256": "b58e2678c8d7019c6df90c2f551ef195c58ac979a383954a009b12abd0bf2359"},
+        {"id": "leaf-crown", "file": "layers/headwear/leaf-crown.png", "sha256": "8003046da444ffd5d14ef011f6aee3002009a8b4653bd53d45b624c254670897"},
+        {"id": "aviator-cap", "file": "layers/headwear/aviator-cap.png", "sha256": "9005e580b3dcd86583dc807dc002c9a48e8a527a14561685797969de84098d25"}
+      ]
+    }
+  ]
+}

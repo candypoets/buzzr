@@ -291,6 +291,41 @@ class AgentProfilePublishingTests(unittest.TestCase):
             )
             self.assertEqual(state["identity_profiles"]["sol"]["avatar_id"], "bee-01")
 
+    def test_identity_profile_composes_layer_traits_from_the_pubkey(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            config = identity_config()
+            config.identities = {"sol": config.identities["sol"]}
+            state = {"identity_profiles": {}, "avatar_uploads": {}}
+            uploader = Mock()
+            uploader.upload_file.return_value = {
+                "url": "https://relay.example/media/composed-bee"
+            }
+            publisher = Mock()
+            with (
+                patch("herdr_buzz.sync.BuzzClient", return_value=uploader),
+                patch("herdr_buzz.sync.NostrTools", return_value=publisher),
+            ):
+                _sync_identity_profiles(
+                    config,
+                    state,
+                    SyncReport(applied=True),
+                    apply=True,
+                    now=1_000,
+                    avatar_output_dir=Path(directory),
+                )
+
+            uploaded_path = uploader.upload_file.call_args.args[0]
+            self.assertTrue(uploaded_path.is_file())
+            self.assertEqual(uploaded_path.suffix, ".png")
+            self.assertEqual(
+                set(state["identity_profiles"]["sol"]["avatar_traits"]),
+                {"background", "body", "neck", "eyewear", "headwear"},
+            )
+            self.assertEqual(
+                publisher.publish_profile.call_args.kwargs["picture"],
+                "https://relay.example/media/composed-bee",
+            )
+
     def test_identity_profile_can_disable_avatars(self) -> None:
         config = identity_config()
         config.bridge = BridgeConfig(

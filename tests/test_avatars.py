@@ -6,18 +6,59 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from herdr_buzz.avatars import AvatarPackError, load_avatar_pack, select_avatar
+from herdr_buzz.avatars import (
+    AvatarPackError,
+    compose_avatar,
+    load_avatar_pack,
+    select_avatar,
+    select_avatar_traits,
+)
 
 
 class AvatarPackTests(unittest.TestCase):
-    def test_bundled_recraft_pack_is_complete_and_selection_is_stable(self) -> None:
+    def test_bundled_recraft_pack_is_layered_and_selection_is_stable(self) -> None:
         pack = load_avatar_pack()
-        self.assertEqual(pack.pack_id, "bees-v1")
+        self.assertEqual(pack.pack_id, "bees-v2")
+        self.assertTrue(pack.layered)
+        self.assertEqual((pack.width, pack.height), (512, 512))
+        self.assertEqual(pack.combination_count, 12_348)
+        self.assertEqual(
+            [layer.layer_id for layer in pack.layers],
+            ["background", "body", "neck", "eyewear", "headwear"],
+        )
+
+        selected = select_avatar_traits(pack, "a" * 64)
+        self.assertEqual(selected, select_avatar_traits(pack, "a" * 64))
+        self.assertEqual(
+            [(layer.layer_id, trait.trait_id) for layer, trait in selected],
+            [
+                ("background", "confetti"),
+                ("body", "coral"),
+                ("neck", "flower-collar"),
+                ("eyewear", "hearts"),
+                ("headwear", "mushroom"),
+            ],
+        )
+
+    def test_layered_avatar_is_composed_once_as_a_stable_rgba_png(self) -> None:
+        pack = load_avatar_pack()
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            first = compose_avatar(pack, "a" * 64, output)
+            second = compose_avatar(pack, "a" * 64, output)
+
+            self.assertEqual(first, second)
+            self.assertTrue(first.path.is_file())
+            self.assertEqual(first.path.suffix, ".png")
+            self.assertEqual(first.path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+            self.assertEqual(len(first.traits), 5)
+
+    def test_legacy_complete_image_pack_selection_remains_supported(self) -> None:
+        pack = load_avatar_pack("bees-v1")
+        self.assertFalse(pack.layered)
         self.assertEqual(len(pack.assets), 24)
         selected = select_avatar(pack, "a" * 64)
         self.assertEqual(selected, select_avatar(pack, "a" * 64))
-        self.assertIn(selected.collection, {"sunforge", "moonwire", "mossbyte", "rosycore"})
-        self.assertEqual(selected.path.suffix, ".webp")
 
         assigned: set[str] = set()
         for number in range(24):

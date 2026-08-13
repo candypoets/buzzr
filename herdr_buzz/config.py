@@ -70,7 +70,7 @@ class BridgeConfig:
     message_poll_seconds: float = 2.0
     auto_provision_agents: bool = False
     avatars_enabled: bool = True
-    avatar_pack: str = "bees-v1"
+    avatar_pack: str = "bees-v2"
     avatar_pack_path: Path | None = None
 
     # Compatibility accessors for the pre-buzzr 0.3 configuration schema.
@@ -459,7 +459,7 @@ def load_config(path: Path) -> Config:
         message_poll_seconds=max(1.0, float(bridge_raw.get("message_poll_seconds", 2.0))),
         auto_provision_agents=bool(bridge_raw.get("auto_provision_agents", False)),
         avatars_enabled=bool(bridge_raw.get("avatars_enabled", True)),
-        avatar_pack=str(bridge_raw.get("avatar_pack", "bees-v1")),
+        avatar_pack=str(bridge_raw.get("avatar_pack", "bees-v2")),
         avatar_pack_path=avatar_pack_path,
     )
 

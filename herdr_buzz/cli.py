@@ -20,7 +20,7 @@ from .config import (
 from .provisioning import provision_local
 from .service import BridgeService, queue_reply
 from .state import StateStore
-from .sync import SyncReport, reconcile
+from .sync import SyncReport, reconcile, refresh_profiles
 from .topology import Topology, build_topology
 
 
@@ -408,19 +408,12 @@ def cmd_reconcile(args: argparse.Namespace) -> int:
 
 def cmd_refresh_profiles(args: argparse.Namespace) -> int:
     config, store, topology = _load(args)
-    with store.locked():
-        state = store.load()
-        profiles = state.get("identity_profiles", {})
-        if isinstance(profiles, dict):
-            for cached in profiles.values():
-                if isinstance(cached, dict):
-                    cached.pop("published_at", None)
-        else:
-            state["identity_profiles"] = {}
-        if args.reupload:
-            state["avatar_uploads"] = {}
-        store.save(state)
-    report = reconcile(config, topology, store, force_apply=True)
+    report = refresh_profiles(
+        config,
+        topology,
+        store,
+        reupload=args.reupload,
+    )
     _print_report(report)
     return 0
 

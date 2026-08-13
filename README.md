@@ -72,26 +72,33 @@ mirrors the bridge's response policy and lists the configured human public key
 when access is owner-only; it never requires the human private key. Unchanged
 declarations are cached and refreshed at most once per day.
 
-## Recraft bee profiles
+## Layered Recraft bee profiles
 
-Buzzr ships with `bees-v1`, a pack of 24 anime bee avatars generated ahead of
-time with Recraft. There is no image API, Recraft account, prompt, or extra
-Python dependency at runtime. Each random Nostr identity deterministically
-ranks the pack; Buzzr preserves existing assignments and avoids duplicates
-until every avatar has been used.
+Buzzr ships with `bees-v2`, an NFT-style layer pack made with Recraft. It uses
+one canonical bee rig and independently selects a background, body palette,
+neck accessory, eyewear, and headwear from the identity's Nostr public key.
+The 6 × 6 × 7 × 7 × 7 traits provide 12,348 stable combinations.
 
-The first profile reconciliation uploads each selected WebP to the relay's
+Generated source art can have any dimensions. Pack preparation trims and
+positions every part on the same transparent 512×512 canvas, and the manifest
+records that normalized geometry. At runtime, buzzr validates every layer,
+alpha-composites the selected PNGs in z-order, and caches the finished image.
+The compositor uses only the Python standard library; it needs no Recraft
+account, image API, Pillow, or ImageMagick on the installed machine.
+
+The first profile reconciliation uploads the composed PNG to the relay's
 Blossom store and publishes its public URL in that identity's signed Nostr
-`kind:0` `picture` field. Upload URLs and assignments are cached, so routine
-daily profile refreshes do not upload the image again. This covers the bridge
-and every configured agent identity without using the human private key.
+`kind:0` `picture` field. Upload URLs, selected traits, and compositions are
+cached, so routine daily profile refreshes do not upload the image again. This
+covers the bridge and every configured agent identity without using the human
+private key.
 
 The defaults need no configuration:
 
 ```toml
 [bridge]
 avatars_enabled = true
-avatar_pack = "bees-v1"
+avatar_pack = "bees-v2"
 ```
 
 To backfill or force profile metadata to refresh immediately:
@@ -102,12 +109,12 @@ herdr plugin action invoke refresh-profiles --plugin buzzr
 ./bin/buzzr refresh-profiles --reupload
 ```
 
-Set `avatars_enabled = false` for text-only profiles. A custom pack can be
-selected with `avatar_pack_path`; its `manifest.json` uses the same `id`,
-`collection`, `file`, and `sha256` fields as
-[`assets/avatars/bees-v1/manifest.json`](assets/avatars/bees-v1/manifest.json).
-The generation provenance and four Recraft prompt families are documented in
-[`assets/avatars/bees-v1/README.md`](assets/avatars/bees-v1/README.md).
+Set `avatars_enabled = false` for text-only profiles. A custom layered pack can
+be selected with `avatar_pack_path`; its categories and integrity hashes follow
+[`assets/avatars/bees-v2/manifest.json`](assets/avatars/bees-v2/manifest.json).
+Legacy `bees-v1`-style complete-image manifests remain supported. The Recraft
+prompts, layer preparation, and coordinate contract are documented in
+[`assets/avatars/bees-v2/README.md`](assets/avatars/bees-v2/README.md).
 
 Useful checks:
 

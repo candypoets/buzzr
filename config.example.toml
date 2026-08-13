@@ -25,11 +25,11 @@ auto_provision_agents = false
 archive_closed_spaces = false
 remove_departed_agents = false
 
-# Every managed identity gets a stable avatar from the bundled Recraft pack.
-# Selection is derived from its random Nostr public key, so it does not change
-# after a restart. Set avatars_enabled = false to publish text-only profiles.
+# Every managed identity gets a layered avatar from the bundled Recraft pack.
+# Each trait is independently derived from its Nostr public key, composed on a
+# fixed 512x512 rig, and remains stable across restarts.
 avatars_enabled = true
-avatar_pack = "bees-v1"
+avatar_pack = "bees-v2"
 # avatar_pack_path = "/absolute/path/to/a/custom/pack"
 
 respond_to = "owner-only"

@@ -4,14 +4,15 @@ import hashlib
 import json
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
 from .agent_profiles import AGENT_PROFILE_REFRESH_SECONDS, build_agent_profile_declarations
-from .avatars import AvatarPackError, load_avatar_pack, select_avatar
+from .avatars import AvatarPackError, build_avatar, load_avatar_pack
 from .clients import BuzzClient, CommandError, NostrTools
 from .config import Config
-from .state import StateStore
+from .state import StateStore, runtime_directory
 from .topology import Topology
 
 
@@ -114,6 +115,7 @@ def _sync_identity_profiles(
     *,
     apply: bool,
     now: int,
+    avatar_output_dir: Path | None = None,
 ) -> None:
     """Upload stable avatars and publish kind:0 profiles for managed identities."""
 
@@ -140,9 +142,13 @@ def _sync_identity_profiles(
     profiles = _managed_profiles(config)
     nak: NostrTools | None = None
     reserved_avatar_ids: set[str] = set()
-    assets_by_id = {asset.asset_id: asset for asset in pack.assets} if pack else {}
+    assets_by_id = (
+        {asset.asset_id: asset for asset in pack.assets}
+        if pack and not pack.layered
+        else {}
+    )
     preserved_avatars: dict[str, Any] = {}
-    if pack:
+    if pack and not pack.layered:
         # Reserve every valid existing assignment before placing newcomers, so
         # a newly-added identity that sorts earlier cannot steal an old avatar.
         for profile in profiles:
@@ -166,9 +172,31 @@ def _sync_identity_profiles(
         cached = cache.get(profile.cache_id, {})
         avatar = None
         if pack:
-            avatar = preserved_avatars.get(profile.cache_id)
-            if avatar is None:
-                avatar = select_avatar(pack, profile.public_key, reserved_avatar_ids)
+            if pack.layered:
+                render_directory = (
+                    avatar_output_dir or runtime_directory() / "avatars"
+                    if apply
+                    else None
+                )
+                try:
+                    avatar = build_avatar(
+                        pack,
+                        profile.public_key,
+                        output_directory=render_directory,
+                    )
+                except AvatarPackError as exc:
+                    report.warnings.append(
+                        f"cannot compose avatar for {profile.name}: {exc}"
+                    )
+                    continue
+            else:
+                avatar = preserved_avatars.get(profile.cache_id)
+                if avatar is None:
+                    avatar = build_avatar(
+                        pack,
+                        profile.public_key,
+                        excluded_ids=reserved_avatar_ids,
+                    )
                 reserved_avatar_ids.add(avatar.asset_id)
         fingerprint = _profile_fingerprint(
             profile,
@@ -235,6 +263,7 @@ def _sync_identity_profiles(
                     continue
                 uploads[avatar.sha256] = {
                     "asset_id": avatar.asset_id,
+                    "traits": dict(avatar.traits),
                     "relay_url": config.bridge.relay_url,
                     "url": picture,
                     "uploaded_at": now,
@@ -260,6 +289,7 @@ def _sync_identity_profiles(
             "avatar_id": avatar.asset_id if avatar else None,
             "avatar_pack": pack.pack_id if pack else None,
             "avatar_sha256": avatar.sha256 if avatar else None,
+            "avatar_traits": dict(avatar.traits) if avatar else {},
             "picture_url": picture,
         }
 
@@ -532,6 +562,7 @@ def _reconcile_unlocked(
         report,
         apply=apply,
         now=now,
+        avatar_output_dir=store.directory / "avatars",
     )
     _sync_agent_profiles(
         config,
@@ -564,3 +595,47 @@ def reconcile(
             store,
             force_apply=force_apply,
         )
+
+
+def refresh_profiles(
+    config: Config,
+    topology: Topology,
+    store: StateStore,
+    *,
+    reupload: bool = False,
+) -> SyncReport:
+    """Refresh managed Nostr profiles without an unrelated channel scan."""
+
+    report = SyncReport(applied=True, warnings=list(topology.warnings))
+    with store.locked():
+        state = store.load()
+        profiles = state.get("identity_profiles", {})
+        if isinstance(profiles, dict):
+            for cached in profiles.values():
+                if isinstance(cached, dict):
+                    cached.pop("published_at", None)
+        else:
+            state["identity_profiles"] = {}
+        if reupload:
+            state["avatar_uploads"] = {}
+
+        now = int(time.time())
+        _sync_identity_profiles(
+            config,
+            state,
+            report,
+            apply=True,
+            now=now,
+            avatar_output_dir=store.directory / "avatars",
+        )
+        _sync_agent_profiles(
+            config,
+            topology,
+            state,
+            report,
+            apply=True,
+            now=now,
+        )
+        state["last_error"] = None
+        store.save(state)
+    return report
