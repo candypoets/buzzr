@@ -69,6 +69,9 @@ class BridgeConfig:
     poll_seconds: float = 5.0
     message_poll_seconds: float = 2.0
     auto_provision_agents: bool = False
+    avatars_enabled: bool = True
+    avatar_pack: str = "bees-v1"
+    avatar_pack_path: Path | None = None
 
     # Compatibility accessors for the pre-buzzr 0.3 configuration schema.
     @property
@@ -390,6 +393,7 @@ def load_config(path: Path) -> Config:
 
     compose_file = resolve_config_path(bridge_raw.get("compose_file"))
     managed_secrets_file = resolve_config_path(bridge_raw.get("managed_secrets_file"))
+    avatar_pack_path = resolve_config_path(bridge_raw.get("avatar_pack_path"))
 
     respond_to = str(bridge_raw.get("respond_to", "owner-only"))
     if respond_to not in {"owner-only", "allowlist", "anyone", "nobody"}:
@@ -454,6 +458,9 @@ def load_config(path: Path) -> Config:
         poll_seconds=max(1.0, float(bridge_raw.get("poll_seconds", 5.0))),
         message_poll_seconds=max(1.0, float(bridge_raw.get("message_poll_seconds", 2.0))),
         auto_provision_agents=bool(bridge_raw.get("auto_provision_agents", False)),
+        avatars_enabled=bool(bridge_raw.get("avatars_enabled", True)),
+        avatar_pack=str(bridge_raw.get("avatar_pack", "bees-v1")),
+        avatar_pack_path=avatar_pack_path,
     )
 
     identities_raw = raw.get("identities", {})

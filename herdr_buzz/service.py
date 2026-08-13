@@ -214,7 +214,6 @@ class BridgeService:
             last_message_poll = 0.0
             try:
                 while self.running:
-                    state = self.store.load()
                     try:
                         if self.config_path:
                             self.config = load_config(self.config_path)
@@ -233,19 +232,23 @@ class BridgeService:
                                 self.config_path, snapshot
                             )
                         reconcile(self.config, topology, self.store)
-                        state = self.store.load()
-                        self._process_outbox(state)
-                        now = time.monotonic()
-                        if self.config.bridge.routing_enabled and (
-                            now - last_message_poll >= self.config.bridge.message_poll_seconds
-                        ):
-                            self._poll_messages(topology, state)
-                            last_message_poll = now
-                        state["last_error"] = None
-                        self.store.save(state)
+                        with self.store.locked():
+                            state = self.store.load()
+                            self._process_outbox(state)
+                            now = time.monotonic()
+                            if self.config.bridge.routing_enabled and (
+                                now - last_message_poll
+                                >= self.config.bridge.message_poll_seconds
+                            ):
+                                self._poll_messages(topology, state)
+                                last_message_poll = now
+                            state["last_error"] = None
+                            self.store.save(state)
                     except Exception as exc:  # daemon boundary: record and retry
-                        state["last_error"] = str(exc)
-                        self.store.save(state)
+                        with self.store.locked():
+                            state = self.store.load()
+                            state["last_error"] = str(exc)
+                            self.store.save(state)
                     deadline = time.monotonic() + self.config.bridge.poll_seconds
                     while self.running and time.monotonic() < deadline:
                         time.sleep(min(0.25, max(0.0, deadline - time.monotonic())))

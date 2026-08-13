@@ -406,6 +406,25 @@ def cmd_reconcile(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_refresh_profiles(args: argparse.Namespace) -> int:
+    config, store, topology = _load(args)
+    with store.locked():
+        state = store.load()
+        profiles = state.get("identity_profiles", {})
+        if isinstance(profiles, dict):
+            for cached in profiles.values():
+                if isinstance(cached, dict):
+                    cached.pop("published_at", None)
+        else:
+            state["identity_profiles"] = {}
+        if args.reupload:
+            state["avatar_uploads"] = {}
+        store.save(state)
+    report = reconcile(config, topology, store, force_apply=True)
+    _print_report(report)
+    return 0
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     config, store, topology = _load(args)
     state = store.load()
@@ -422,6 +441,8 @@ def cmd_status(args: argparse.Namespace) -> int:
         "agents": len(topology.agents),
         "mapped_agents": sum(1 for agent in topology.agents if agent.identity_id),
         "channels": state.get("channels", {}),
+        "profiled_identities": len(state.get("identity_profiles", {})),
+        "uploaded_avatars": len(state.get("avatar_uploads", {})),
         "last_reconcile_at": state.get("last_reconcile_at"),
         "last_error": state.get("last_error"),
         "warnings": topology.warnings,
@@ -438,6 +459,8 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(f"Bridge credential: {'available' if payload['bridge_credential_available'] else 'MISSING'}")
         print(f"Human pubkey: {'available' if payload['human_pubkey_available'] else 'MISSING'}")
         print(f"Known channels: {len(payload['channels'])}")
+        print(f"Managed profiles: {payload['profiled_identities']}")
+        print(f"Uploaded avatars: {payload['uploaded_avatars']}")
         if payload["last_error"]:
             print(f"Last error: {payload['last_error']}")
         for warning in payload["warnings"]:
@@ -537,6 +560,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--apply", action="store_true", help="apply even when bridge.sync_enabled is false"
     )
     reconcile_parser.set_defaults(func=cmd_reconcile)
+
+    profiles = sub.add_parser(
+        "refresh-profiles",
+        help="republish managed profiles and their stable avatars",
+    )
+    profiles.add_argument(
+        "--reupload",
+        action="store_true",
+        help="upload image blobs again instead of reusing cached URLs",
+    )
+    profiles.set_defaults(func=cmd_refresh_profiles)
 
     status = sub.add_parser("status", help="show bridge readiness and current state")
     status.add_argument("--json", action="store_true")

@@ -1,6 +1,6 @@
 id = "buzzr"
 name = "buzzr"
-version = "0.3.1"
+version = "0.4.0"
 min_herdr_version = "0.8.0"
 description = "Mirror Herdr Spaces and their live agents into Buzz channels."
 platforms = ["linux", "macos"]
@@ -32,6 +32,11 @@ command = ["bin/buzzr", "plan"]
 id = "reconcile"
 title = "Reconcile Buzz channels"
 command = ["bin/buzzr", "reconcile"]
+
+[[actions]]
+id = "refresh-profiles"
+title = "Refresh Buzz agent profiles"
+command = ["bin/buzzr", "refresh-profiles"]
 
 [[actions]]
 id = "status"

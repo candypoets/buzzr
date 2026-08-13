@@ -47,7 +47,8 @@ The setup overlay and `bootstrap` command perform the same provisioning flow.
 4. records every bridge/agent identity as belonging to the human pubkey in the
    local relay database, without changing an identity already owned by someone
    else;
-5. publishes their Nostr profiles and Buzz agent-directory declarations;
+5. assigns Recraft bee avatars, uploads them to Buzz, and publishes their Nostr
+   profiles and Buzz agent-directory declarations;
 6. creates/adopts the Space channels, adds the human as owner and agents as
    bots; and
 7. enables reconciliation, automatic provisioning, and mention routing.
@@ -70,6 +71,43 @@ This is what makes those bots mentionable in Buzz Desktop. The declaration
 mirrors the bridge's response policy and lists the configured human public key
 when access is owner-only; it never requires the human private key. Unchanged
 declarations are cached and refreshed at most once per day.
+
+## Recraft bee profiles
+
+Buzzr ships with `bees-v1`, a pack of 24 anime bee avatars generated ahead of
+time with Recraft. There is no image API, Recraft account, prompt, or extra
+Python dependency at runtime. Each random Nostr identity deterministically
+ranks the pack; Buzzr preserves existing assignments and avoids duplicates
+until every avatar has been used.
+
+The first profile reconciliation uploads each selected WebP to the relay's
+Blossom store and publishes its public URL in that identity's signed Nostr
+`kind:0` `picture` field. Upload URLs and assignments are cached, so routine
+daily profile refreshes do not upload the image again. This covers the bridge
+and every configured agent identity without using the human private key.
+
+The defaults need no configuration:
+
+```toml
+[bridge]
+avatars_enabled = true
+avatar_pack = "bees-v1"
+```
+
+To backfill or force profile metadata to refresh immediately:
+
+```bash
+herdr plugin action invoke refresh-profiles --plugin buzzr
+# Also discard cached Blossom URLs and upload the selected files again:
+./bin/buzzr refresh-profiles --reupload
+```
+
+Set `avatars_enabled = false` for text-only profiles. A custom pack can be
+selected with `avatar_pack_path`; its `manifest.json` uses the same `id`,
+`collection`, `file`, and `sha256` fields as
+[`assets/avatars/bees-v1/manifest.json`](assets/avatars/bees-v1/manifest.json).
+The generation provenance and four Recraft prompt families are documented in
+[`assets/avatars/bees-v1/README.md`](assets/avatars/bees-v1/README.md).
 
 Useful checks:
 

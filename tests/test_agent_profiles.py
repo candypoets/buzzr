@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import json
 import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from herdr_buzz.agent_profiles import build_agent_profile_declarations
-from herdr_buzz.clients import NostrTools
+from herdr_buzz.avatars import AvatarAsset, AvatarPack
+from herdr_buzz.clients import BuzzClient, NostrTools
 from herdr_buzz.config import BridgeConfig, Config, IdentityConfig
-from herdr_buzz.sync import SyncReport, _sync_agent_profiles
+from herdr_buzz.sync import (
+    IDENTITY_PROFILE_REFRESH_SECONDS,
+    SyncReport,
+    _sync_agent_profiles,
+    _sync_identity_profiles,
+)
 from herdr_buzz.topology import AgentBinding, SpaceBinding, Topology
 
 
@@ -139,6 +147,45 @@ class AgentProfileDeclarationTests(unittest.TestCase):
 
 
 class AgentProfilePublishingTests(unittest.TestCase):
+    def test_buzz_upload_uses_the_identity_key_without_putting_it_in_argv(self) -> None:
+        completed = subprocess.CompletedProcess(
+            [],
+            0,
+            stdout='{"url":"https://relay.example/media/bee"}\n',
+            stderr="",
+        )
+        with patch("herdr_buzz.clients.subprocess.run", return_value=completed) as run:
+            result = BuzzClient(
+                "buzz",
+                "https://relay.example",
+                SOL_PRIVATE,
+            ).upload_file(Path("/tmp/bee.webp"))
+
+        args = run.call_args.args[0]
+        env = run.call_args.kwargs["env"]
+        self.assertEqual(args, ["buzz", "upload", "file", "--file", "/tmp/bee.webp"])
+        self.assertNotIn(SOL_PRIVATE, args)
+        self.assertEqual(env["BUZZ_PRIVATE_KEY"], SOL_PRIVATE)
+        self.assertEqual(result["url"], "https://relay.example/media/bee")
+
+    def test_nak_profile_includes_the_picture_without_putting_secret_in_argv(self) -> None:
+        completed = subprocess.CompletedProcess([], 0, stdout="event-id\n", stderr="")
+        with patch("herdr_buzz.clients.subprocess.run", return_value=completed) as run:
+            NostrTools("nak").publish_profile(
+                "wss://relay.example",
+                SOL_PRIVATE,
+                name="Sol",
+                about="Agent",
+                picture="https://relay.example/media/bee",
+            )
+
+        args = run.call_args.args[0]
+        env = run.call_args.kwargs["env"]
+        self.assertNotIn(SOL_PRIVATE, args)
+        self.assertEqual(env["NOSTR_SECRET_KEY"], SOL_PRIVATE)
+        content = json.loads(args[args.index("--content") + 1])
+        self.assertEqual(content["picture"], "https://relay.example/media/bee")
+
     def test_nak_publishes_kind_10100_without_putting_secret_in_argv(self) -> None:
         completed = subprocess.CompletedProcess([], 0, stdout="event-id\n", stderr="")
         with patch("herdr_buzz.clients.subprocess.run", return_value=completed) as run:
@@ -191,6 +238,82 @@ class AgentProfilePublishingTests(unittest.TestCase):
             state["agent_profiles"]["sol"]["channel_ids"],
             ["11111111-1111-1111-1111-111111111111"],
         )
+
+    def test_identity_profile_uploads_recraft_avatar_once_and_reuses_its_url(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "bee.webp"
+            path.write_bytes(b"bee")
+            pack = AvatarPack(
+                pack_id="test-bees",
+                root=path.parent,
+                assets=(
+                    AvatarAsset(
+                        asset_id="bee-01",
+                        collection="test",
+                        path=path,
+                        sha256="e" * 64,
+                    ),
+                ),
+            )
+            config = identity_config()
+            config.identities = {"sol": config.identities["sol"]}
+            state = {"identity_profiles": {}, "avatar_uploads": {}}
+            uploader = Mock()
+            uploader.upload_file.return_value = {
+                "url": "https://relay.example/media/bee"
+            }
+            publisher = Mock()
+            with (
+                patch("herdr_buzz.sync.load_avatar_pack", return_value=pack),
+                patch("herdr_buzz.sync.BuzzClient", return_value=uploader),
+                patch("herdr_buzz.sync.NostrTools", return_value=publisher),
+            ):
+                _sync_identity_profiles(
+                    config,
+                    state,
+                    SyncReport(applied=True),
+                    apply=True,
+                    now=1_000,
+                )
+                _sync_identity_profiles(
+                    config,
+                    state,
+                    SyncReport(applied=True),
+                    apply=True,
+                    now=1_000 + IDENTITY_PROFILE_REFRESH_SECONDS,
+                )
+
+            uploader.upload_file.assert_called_once_with(path)
+            self.assertEqual(publisher.publish_profile.call_count, 2)
+            self.assertEqual(
+                publisher.publish_profile.call_args.kwargs["picture"],
+                "https://relay.example/media/bee",
+            )
+            self.assertEqual(state["identity_profiles"]["sol"]["avatar_id"], "bee-01")
+
+    def test_identity_profile_can_disable_avatars(self) -> None:
+        config = identity_config()
+        config.bridge = BridgeConfig(
+            human_pubkey=HUMAN,
+            avatars_enabled=False,
+        )
+        config.identities = {"sol": config.identities["sol"]}
+        state = {"identity_profiles": {}, "avatar_uploads": {}}
+        publisher = Mock()
+        with (
+            patch("herdr_buzz.sync.BuzzClient") as uploader,
+            patch("herdr_buzz.sync.NostrTools", return_value=publisher),
+        ):
+            _sync_identity_profiles(
+                config,
+                state,
+                SyncReport(applied=True),
+                apply=True,
+                now=1_000,
+            )
+
+        uploader.assert_not_called()
+        self.assertIsNone(publisher.publish_profile.call_args.kwargs["picture"])
 
 
 if __name__ == "__main__":

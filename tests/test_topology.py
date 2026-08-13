@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fcntl
 import tempfile
 import unittest
 from pathlib import Path
@@ -93,9 +94,24 @@ class DotenvTests(unittest.TestCase):
             path = root / "state.json"
             path.write_text('{"version":1,"channels":{"w1":{"name":"alpha"}}}', encoding="utf-8")
             loaded = StateStore(root).load()
-            self.assertEqual(loaded["version"], 2)
+            self.assertEqual(loaded["version"], 3)
             self.assertEqual(loaded["channels"]["w1"]["name"], "alpha")
             self.assertEqual(loaded["agent_profiles"], {})
+            self.assertEqual(loaded["identity_profiles"], {})
+            self.assertEqual(loaded["avatar_uploads"], {})
+
+    def test_state_lock_serializes_independent_writers(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = StateStore(Path(directory))
+            with store.locked():
+                lock_path = Path(directory) / "state.lock"
+                with lock_path.open("a+", encoding="utf-8") as contender:
+                    with self.assertRaises(BlockingIOError):
+                        fcntl.flock(
+                            contender.fileno(),
+                            fcntl.LOCK_EX | fcntl.LOCK_NB,
+                        )
+            self.assertEqual(lock_path.stat().st_mode & 0o777, 0o600)
 
     def test_secure_dotenv_is_parsed_without_expansion(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

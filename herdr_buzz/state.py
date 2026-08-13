@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
-STATE_VERSION = 2
+STATE_VERSION = 3
 
 
 def default_state() -> dict[str, Any]:
@@ -15,6 +17,8 @@ def default_state() -> dict[str, Any]:
         "version": STATE_VERSION,
         "channels": {},
         "agent_profiles": {},
+        "identity_profiles": {},
+        "avatar_uploads": {},
         "last_seen": {},
         "processed": [],
         "pending": [],
@@ -35,6 +39,23 @@ class StateStore:
             self.directory.chmod(0o700)
         except OSError:
             pass
+
+    @contextmanager
+    def locked(self) -> Iterator[None]:
+        """Serialize cross-process read/modify/write state transactions."""
+
+        self.ensure()
+        lock_path = self.directory / "state.lock"
+        with lock_path.open("a+", encoding="utf-8") as lock:
+            try:
+                os.chmod(lock_path, 0o600)
+            except OSError:
+                pass
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
     def load(self) -> dict[str, Any]:
         self.ensure()

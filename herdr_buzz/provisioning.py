@@ -187,25 +187,6 @@ def provision_local(
             admin.add_relay_member(pubkey)
             added += 1
 
-    nak = NostrTools(config.bridge.nak_bin)
-    if bridge_created:
-        nak.publish_profile(
-            config.bridge.relay_url,
-            bridge_private_key,
-            name="buzzr",
-            about="Herdr ↔ Buzz bridge managed by the buzzr plugin.",
-        )
-    for identity in created_identities:
-        private_key, _auth = config.identity_credentials(identity.identity_id)
-        if not private_key:
-            raise ConfigError(f"generated key for {identity.identity_id} could not be reloaded")
-        nak.publish_profile(
-            config.bridge.relay_url,
-            private_key,
-            name=identity.display_name,
-            about=f"Herdr agent identity managed by buzzr ({identity.identity_id}).",
-        )
-
     # This trusted local write is the missing ownership link: it never requires
     # the human's secret key, and refuses to overwrite another existing owner.
     admin.assign_agent_owner(human_pubkey, desired_pubkeys)

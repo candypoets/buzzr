@@ -156,8 +156,23 @@ class BuzzClient:
         )
         return result if isinstance(result, dict) else {}
 
-    def set_profile(self, name: str, about: str) -> dict[str, Any]:
-        result = self._run(["users", "set-profile", "--name", name, "--about", about])
+    def upload_file(self, path: Path) -> dict[str, Any]:
+        result = self._run(
+            ["upload", "file", "--file", str(path)],
+            timeout=150,
+        )
+        return result if isinstance(result, dict) else {}
+
+    def set_profile(
+        self,
+        name: str,
+        about: str,
+        avatar: str | None = None,
+    ) -> dict[str, Any]:
+        args = ["users", "set-profile", "--name", name, "--about", about]
+        if avatar:
+            args.extend(["--avatar", avatar])
+        result = self._run(args)
         return result if isinstance(result, dict) else {}
 
     def messages(self, channel_id: str, since: int) -> list[dict[str, Any]]:
@@ -248,10 +263,14 @@ class NostrTools:
         *,
         name: str,
         about: str,
+        picture: str | None = None,
     ) -> None:
         if not HEX64_RE.fullmatch(private_key):
             raise CommandError("refusing to publish with an invalid private key")
-        content = json.dumps({"name": name, "display_name": name, "about": about}, separators=(",", ":"))
+        profile = {"name": name, "display_name": name, "about": about}
+        if picture:
+            profile["picture"] = picture
+        content = json.dumps(profile, separators=(",", ":"), sort_keys=True)
         # The key travels only in the child environment, never argv or logs.
         self._run(
             ["event", "--auth", "--kind", "0", "--content", content, relay_url],

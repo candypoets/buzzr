@@ -1,0 +1,37 @@
+{
+  "id": "bees-v1",
+  "version": 1,
+  "generator": {
+    "provider": "Recraft",
+    "model": "recraftv4_1",
+    "generated_size": "1024x1024",
+    "distributed_size": "512x512",
+    "format": "webp"
+  },
+  "assets": [
+    {"id": "moonwire-01", "collection": "moonwire", "file": "moonwire-01.webp", "sha256": "1d5d4efceab435317161a488fa3c1c8970f2d6aaa2cda93061aa1d1416776fe1"},
+    {"id": "moonwire-02", "collection": "moonwire", "file": "moonwire-02.webp", "sha256": "59b6243c4e4ea3f85e2db54ae1b8e7f64664ee16bd447fec974d6ee0327179cd"},
+    {"id": "moonwire-03", "collection": "moonwire", "file": "moonwire-03.webp", "sha256": "7eb6fbf4c66e6e748e15fa461bf65b01cdb100e6efe7068983ce0d9ffd260722"},
+    {"id": "moonwire-04", "collection": "moonwire", "file": "moonwire-04.webp", "sha256": "957040944af7ac746ff3263e1053fd4ee23a77f678ce778d734de1e48ce9f8a2"},
+    {"id": "moonwire-05", "collection": "moonwire", "file": "moonwire-05.webp", "sha256": "a23ae2732b55805ee64e39855e044fd8d65339fab2264e81ea3d622ba55c4d04"},
+    {"id": "moonwire-06", "collection": "moonwire", "file": "moonwire-06.webp", "sha256": "cf6be05ef46c8070e72c08b69811a15010bd3778b5c7e617712b3344bc5396b3"},
+    {"id": "mossbyte-01", "collection": "mossbyte", "file": "mossbyte-01.webp", "sha256": "224454e4592c40e346ff3ed001ae15e6c4d8f0b7ab824b76878156d2cf354189"},
+    {"id": "mossbyte-02", "collection": "mossbyte", "file": "mossbyte-02.webp", "sha256": "b526c1b455e9bda8f1ef2731c29ebed322e9fa08104212d73bc401d64267ef8a"},
+    {"id": "mossbyte-03", "collection": "mossbyte", "file": "mossbyte-03.webp", "sha256": "02ef5f50e5a958dd78b8404fa4a9411194669910bdcb37a4087b050616d3fb71"},
+    {"id": "mossbyte-04", "collection": "mossbyte", "file": "mossbyte-04.webp", "sha256": "761943b7b83aae48ecde1a6a6e4e55aa2d5afb97796c36db11583bed6fd14749"},
+    {"id": "mossbyte-05", "collection": "mossbyte", "file": "mossbyte-05.webp", "sha256": "447d6d3363f006407b0c5281105783536a1e815f3816b21cf1244665ac871697"},
+    {"id": "mossbyte-06", "collection": "mossbyte", "file": "mossbyte-06.webp", "sha256": "13e05a1c224defe4993496c87581baeaa4875aad1488176333d6828028a4bf9f"},
+    {"id": "rosycore-01", "collection": "rosycore", "file": "rosycore-01.webp", "sha256": "bc4401dd5fa84e924dff689553a1bea3cbab3aec323d66a9bd1815b06b30aed9"},
+    {"id": "rosycore-02", "collection": "rosycore", "file": "rosycore-02.webp", "sha256": "4ff1b33003041151c779469f2356b70ed63b76d23907d97c50fdff59c8dc4bdf"},
+    {"id": "rosycore-03", "collection": "rosycore", "file": "rosycore-03.webp", "sha256": "3255647c9235c416f79b9e373fe096d5d68e65dd656f849d1e8553946655477b"},
+    {"id": "rosycore-04", "collection": "rosycore", "file": "rosycore-04.webp", "sha256": "50bccc9ec595a11425f765e54cbf4193bdc9df1d74d06bcfd2eee0dd084b30e5"},
+    {"id": "rosycore-05", "collection": "rosycore", "file": "rosycore-05.webp", "sha256": "52a9d78b303be71945750af107b9afc7fec8202b3ce49ed0859f163ca543262c"},
+    {"id": "rosycore-06", "collection": "rosycore", "file": "rosycore-06.webp", "sha256": "9bec3c4b9c697f9fda796dabdb10300980a414864c81dbd166e0ad3c841202af"},
+    {"id": "sunforge-01", "collection": "sunforge", "file": "sunforge-01.webp", "sha256": "5b16c67e7c88cbdf99f22645009d477522430df6c92b37995af7531454849e1c"},
+    {"id": "sunforge-02", "collection": "sunforge", "file": "sunforge-02.webp", "sha256": "65d6d02a90ea7b90f24cb48c7ba40530d8ed802ed6d4ad22babc2e5b173d46b7"},
+    {"id": "sunforge-03", "collection": "sunforge", "file": "sunforge-03.webp", "sha256": "c23889448d9e28cda59a9495ff0f2c314fc87dd5a42c1fe58ccf60a78debcb82"},
+    {"id": "sunforge-04", "collection": "sunforge", "file": "sunforge-04.webp", "sha256": "68e4027be72ac834f6547b258cf911f76f1e84ae784afad6b6eb180448a265ef"},
+    {"id": "sunforge-05", "collection": "sunforge", "file": "sunforge-05.webp", "sha256": "137c9ab4bee52eda576433fd2285abb1b06591d33b09b4211965c1fa3a15e2a7"},
+    {"id": "sunforge-06", "collection": "sunforge", "file": "sunforge-06.webp", "sha256": "ab105e2f9584c97cea29a055ab01623113f26b9a086b47b918664d0bd3a23c8c"}
+  ]
+}
