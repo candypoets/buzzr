@@ -1,6 +1,6 @@
 id = "buzzr"
 name = "buzzr"
-version = "0.5.0"
+version = "0.5.1"
 min_herdr_version = "0.8.0"
 description = "Mirror Herdr Spaces and their live agents into Buzz channels."
 platforms = ["linux", "macos"]
@@ -11,77 +11,77 @@ platforms = ["linux", "macos"]
 command = ["bash", "scripts/install.sh"]
 
 [[startup]]
-command = ["bin/buzzr", "daemon"]
+command = ["./bin/buzzr", "daemon"]
 
 [[actions]]
 id = "init"
 title = "Initialize Buzz bridge config"
-command = ["bin/buzzr", "init-config"]
+command = ["./bin/buzzr", "init-config"]
 
 [[actions]]
 id = "bootstrap"
 title = "Provision and activate buzzr"
-command = ["bin/buzzr", "bootstrap"]
+command = ["./bin/buzzr", "bootstrap"]
 
 [[actions]]
 id = "doctor"
 title = "Check Buzz bridge configuration"
-command = ["bin/buzzr", "doctor"]
+command = ["./bin/buzzr", "doctor"]
 
 [[actions]]
 id = "plan"
 title = "Preview Herdr to Buzz mapping"
-command = ["bin/buzzr", "plan"]
+command = ["./bin/buzzr", "plan"]
 
 [[actions]]
 id = "reconcile"
 title = "Reconcile Buzz channels"
-command = ["bin/buzzr", "reconcile"]
+command = ["./bin/buzzr", "reconcile"]
 
 [[actions]]
 id = "refresh-profiles"
 title = "Refresh Buzz agent profiles"
-command = ["bin/buzzr", "refresh-profiles"]
+command = ["./bin/buzzr", "refresh-profiles"]
 
 [[actions]]
 id = "status"
 title = "Show Buzz bridge status"
-command = ["bin/buzzr", "status"]
+command = ["./bin/buzzr", "status"]
 
 [[actions]]
 id = "start"
 title = "Start buzzr routing daemon"
-command = ["bin/buzzr", "daemon"]
+command = ["./bin/buzzr", "daemon"]
 
 [[actions]]
 id = "stop"
 title = "Stop buzzr routing daemon"
-command = ["bin/buzzr", "stop"]
+command = ["./bin/buzzr", "stop"]
 
 [[actions]]
 id = "deactivate"
 title = "Stop and deactivate buzzr"
-command = ["bin/buzzr", "deactivate"]
+command = ["./bin/buzzr", "deactivate"]
 
 [[actions]]
 id = "deprovision"
 title = "Preview safe Buzz cleanup"
-command = ["bin/buzzr", "deprovision"]
+command = ["./bin/buzzr", "deprovision"]
 
 [[panes]]
 id = "setup"
 title = "Set up buzzr"
 placement = "overlay"
-command = ["bin/buzzr", "setup"]
+command = ["./bin/buzzr", "setup"]
 
 [[panes]]
 id = "status"
 title = "buzzr"
 placement = "overlay"
-command = ["bin/buzzr", "dashboard"]
+command = ["./bin/buzzr", "dashboard"]
 
 [[panes]]
 id = "cleanup"
 title = "Safely deprovision buzzr"
 placement = "overlay"
-command = ["bin/buzzr", "deprovision", "--interactive"]
+command = ["./bin/buzzr", "deprovision", "--interactive"]

@@ -3,6 +3,21 @@
 
 use std::path::Path;
 
+#[test]
+fn manifest_runtime_commands_are_explicitly_relative() {
+    let manifest: toml::Value = include_str!("../herdr-plugin.toml").parse().unwrap();
+
+    for table_name in ["startup", "actions", "panes"] {
+        for entry in manifest[table_name].as_array().unwrap() {
+            let executable = entry["command"][0].as_str().unwrap();
+            assert_eq!(
+                executable, "./bin/buzzr",
+                "{table_name} commands must be explicit paths relative to the plugin root"
+            );
+        }
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn relocated_install_tree_resolves_plugin_root_from_executable() {
