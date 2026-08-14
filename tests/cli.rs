@@ -417,6 +417,18 @@ fn configure_updates_map_flags_to_bridge_keys() {
 }
 
 #[test]
+fn configure_updates_normalize_npub_owner_keys() {
+    const HEX: &str = "aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4";
+    const NPUB: &str = "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy";
+    let updates = configure_updates(&ConfigureArgs {
+        owner_pubkey: Some(NPUB.to_string()),
+        ..ConfigureArgs::default()
+    });
+    let map: HashMap<String, Option<Value>> = updates.into_iter().collect();
+    assert_eq!(map["human_pubkey"], Some(json!(HEX)));
+}
+
+#[test]
 fn configure_updates_secrets_file_resolves_to_list() {
     let directory = tempfile::tempdir().unwrap();
     let secrets = directory.path().join("secrets.env");

@@ -18,6 +18,42 @@ fn manifest_runtime_commands_are_explicitly_relative() {
     }
 }
 
+#[test]
+fn distributed_config_has_no_relay_default() {
+    let template = include_str!("../config.example.toml");
+    assert!(template.contains("relay_url = \"\""));
+    assert!(!template.contains("nuts.cash"));
+    assert!(buzzr::config::BridgeConfig::default().relay_url.is_empty());
+}
+
+#[test]
+fn bootstrap_without_an_explicit_relay_fails_before_creating_secrets() {
+    let tree = tempfile::tempdir().unwrap();
+    let config = tree.path().join("config.toml");
+    let state = tree.path().join("state");
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_buzzr"))
+        .args([
+            "--config",
+            config.to_str().unwrap(),
+            "--state-dir",
+            state.to_str().unwrap(),
+            "bootstrap",
+            "--human-pubkey",
+            "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
+        ])
+        .env("HERDR_PLUGIN_ROOT", env!("CARGO_MANIFEST_DIR"))
+        .env_remove("BUZZR_RELAY_URL")
+        .env_remove("BUZZ_RELAY_URL")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("--relay is required on first bootstrap")
+    );
+    assert!(!tree.path().join("secrets.env").exists());
+}
+
 #[cfg(unix)]
 #[test]
 fn relocated_install_tree_resolves_plugin_root_from_executable() {

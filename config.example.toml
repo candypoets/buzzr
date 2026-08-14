@@ -1,10 +1,12 @@
 [bridge]
-relay_url = "wss://buzz.nuts.cash"
+# Required for setup/bootstrap. Intentionally blank: buzzr never selects a
+# public relay or creates channels there without an explicit user choice.
+relay_url = ""
 buzz_bin = "buzz"
 
 # `buzzr setup` fills these in. Only the human PUBLIC key is needed. buzzr
 # generates its bridge and missing agent keys into its private secrets file.
-# human_pubkey = "<64 hex>"
+# human_pubkey = "<npub or 64 hex>"
 # compose_file = "~/buzz/docker-compose.yml"
 # managed_secrets_file = "secrets.env"
 # secrets_files = ["secrets.env"]

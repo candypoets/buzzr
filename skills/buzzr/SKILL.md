@@ -39,7 +39,7 @@ Prefer the interactive setup pane:
 herdr plugin pane open --plugin buzzr --entrypoint setup
 ```
 
-The user supplies a public Buzz relay URL, their 64-character public key, and the local Buzz `docker-compose.yml`. Buzzr generates and stores bridge/agent keys privately, provisions relay membership and ownership, reconciles channels, and starts routing.
+The user explicitly supplies a public Buzz relay URL, their `npub` or 64-character hex public key, and the local Buzz `docker-compose.yml`. Buzzr has no built-in relay default. It generates and stores bridge/agent keys privately, provisions relay membership and ownership, reconciles channels, and starts routing.
 
 Verify the result:
 

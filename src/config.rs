@@ -7,6 +7,7 @@ use std::io::Write;
 use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
+use nostr::PublicKey;
 use regex::Regex;
 
 use crate::avatars::normalize_lexical;
@@ -46,6 +47,18 @@ pub fn normalize_name(value: &str) -> String {
         .unwrap()
         .replace_all(&lowered, "-");
     collapsed.trim_matches('-').to_string()
+}
+
+/// Normalize a human Nostr public key from npub, NIP-21, or 64-character hex.
+pub fn normalize_human_pubkey(value: &str) -> Result<String, ConfigError> {
+    PublicKey::parse(value.trim())
+        .map(|public_key| public_key.to_hex())
+        .map_err(|_| {
+            ConfigError(
+                "bridge.human_pubkey must be an npub or 64-character hexadecimal public key"
+                    .to_string(),
+            )
+        })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,7 +124,8 @@ pub struct BridgeConfig {
 impl Default for BridgeConfig {
     fn default() -> Self {
         BridgeConfig {
-            relay_url: "wss://buzz.nuts.cash".to_string(),
+            // A relay is intentionally never selected on the user's behalf.
+            relay_url: String::new(),
             buzz_bin: "buzz".to_string(),
             herdr_bin: "herdr".to_string(),
             nak_bin: "nak".to_string(),
@@ -734,18 +748,13 @@ pub fn load_config(path: &Path) -> Result<Config, ConfigError> {
         }
     };
 
-    let mut human_pubkey = truthy_str(bridge_raw.get("human_pubkey"))
+    let human_pubkey = truthy_str(bridge_raw.get("human_pubkey"))
         .or_else(|| truthy_str(bridge_raw.get("owner_pubkey")))
         .or_else(|| external("BUZZR_HUMAN_PUBKEY").filter(|value| !value.is_empty()))
         .or_else(|| external("BUZZ_PUBLIC_KEY").filter(|value| !value.is_empty()));
-    if human_pubkey.is_some() {
-        human_pubkey = human_pubkey.map(|value| value.to_lowercase());
-    }
-    if let Some(value) = &human_pubkey {
-        if !value.is_empty() && !hex64_re().is_match(value) {
-            return err("bridge.human_pubkey must be 64 lowercase hexadecimal characters");
-        }
-    }
+    let human_pubkey = human_pubkey
+        .map(|value| normalize_human_pubkey(&value))
+        .transpose()?;
 
     let mut bridge_public_key = truthy_str(bridge_raw.get("bridge_public_key"))
         .or_else(|| external("BUZZR_BRIDGE_PUBLIC_KEY").filter(|value| !value.is_empty()));
@@ -819,7 +828,7 @@ pub fn load_config(path: &Path) -> Result<Config, ConfigError> {
                 bridge_raw
                     .get("relay_url")
                     .map(toml_scalar_string)
-                    .unwrap_or_else(|| "wss://buzz.nuts.cash".to_string())
+                    .unwrap_or_default()
             }),
         buzz_bin: bridge_raw
             .get("buzz_bin")

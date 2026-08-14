@@ -5,8 +5,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 use buzzr::config::{
-    append_identities, load_config, parse_dotenv, update_bridge_settings, update_dotenv,
-    BridgeConfig, Config, IdentityConfig,
+    append_identities, load_config, normalize_human_pubkey, parse_dotenv, update_bridge_settings,
+    update_dotenv, BridgeConfig, Config, IdentityConfig,
 };
 use buzzr::state::StateStore;
 use buzzr::topology::{build_topology, channel_slug, mentioned_pubkeys};
@@ -77,6 +77,16 @@ impl Drop for EnvGuard {
 
 fn file_mode(path: &Path) -> u32 {
     std::fs::metadata(path).unwrap().permissions().mode() & 0o777
+}
+
+#[test]
+fn human_pubkeys_accept_npub_and_normalize_to_hex() {
+    const HEX: &str = "aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4";
+    const NPUB: &str = "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy";
+
+    assert_eq!(normalize_human_pubkey(NPUB).unwrap(), HEX);
+    assert_eq!(normalize_human_pubkey(&HEX.to_uppercase()).unwrap(), HEX);
+    assert!(normalize_human_pubkey("not-a-public-key").is_err());
 }
 
 #[test]

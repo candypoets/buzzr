@@ -13,7 +13,9 @@ use serde_json::{json, Value};
 
 use crate::avatars::normalize_lexical;
 use crate::clients::{BuzzClient, CommandError, HerdrClient};
-use crate::config::{load_config, update_bridge_settings, update_dotenv, Config, ConfigError};
+use crate::config::{
+    load_config, normalize_human_pubkey, update_bridge_settings, update_dotenv, Config, ConfigError,
+};
 use crate::lifecycle::{
     apply_deprovision, build_deprovision_plan, deactivate, render_deprovision_plan, stop_daemon,
     DeprovisionPlan, StopOutcome,
@@ -446,10 +448,9 @@ pub fn configure_updates(args: &ConfigureArgs) -> Vec<(String, Option<Value>)> {
         ));
     }
     if let Some(owner_pubkey) = &args.owner_pubkey {
-        updates.push((
-            "human_pubkey".to_string(),
-            Some(json!(owner_pubkey.to_lowercase())),
-        ));
+        let owner_pubkey =
+            normalize_human_pubkey(owner_pubkey).unwrap_or_else(|_| owner_pubkey.to_lowercase());
+        updates.push(("human_pubkey".to_string(), Some(json!(owner_pubkey))));
     }
     updates
 }
@@ -501,13 +502,25 @@ fn run_bootstrap(parsed: &Parsed, args: &BootstrapArgs) -> Result<i32, CliError>
         .filter(|value| !value.is_empty())
         .or_else(|| current.as_ref().and_then(Config::human_public_key));
     let human_pubkey = match human_pubkey {
-        Some(human_pubkey) => human_pubkey,
+        Some(human_pubkey) => normalize_human_pubkey(&human_pubkey)?,
         None => {
             return Err(
                 ConfigError("--human-pubkey is required on first bootstrap".to_string()).into(),
             );
         }
     };
+
+    let relay_url = args
+        .relay
+        .clone()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| {
+            current
+                .as_ref()
+                .map(|current| current.bridge.relay_url.clone())
+                .filter(|value| !value.trim().is_empty())
+        })
+        .ok_or_else(|| ConfigError("--relay is required on first bootstrap".to_string()))?;
 
     let managed = match &args.managed_secrets_file {
         Some(path) => resolve_path(path),
@@ -551,21 +564,8 @@ fn run_bootstrap(parsed: &Parsed, args: &BootstrapArgs) -> Result<i32, CliError>
         .unwrap_or_else(|| "~/buzz/docker-compose.yml".to_string());
     let compose_file = resolve_path(args.compose_file.as_deref().unwrap_or(&compose_default));
 
-    let relay_url = args
-        .relay
-        .clone()
-        .filter(|value| !value.is_empty())
-        .or_else(|| {
-            current
-                .as_ref()
-                .map(|current| current.bridge.relay_url.clone())
-        })
-        .unwrap_or_else(|| "wss://buzz.nuts.cash".to_string());
     let mut updates: Vec<(String, Option<Value>)> = vec![
-        (
-            "human_pubkey".to_string(),
-            Some(json!(human_pubkey.to_lowercase())),
-        ),
+        ("human_pubkey".to_string(), Some(json!(human_pubkey))),
         ("relay_url".to_string(), Some(json!(relay_url))),
         (
             "compose_file".to_string(),
@@ -616,7 +616,7 @@ fn run_bootstrap(parsed: &Parsed, args: &BootstrapArgs) -> Result<i32, CliError>
 
     println!("Configured: {}", destination.display());
     println!("Relay: {}", config.bridge.relay_url);
-    println!("Human controller: {}", human_pubkey.to_lowercase());
+    println!("Human controller: {human_pubkey}");
     println!(
         "Bridge identity: {}",
         config.bridge.bridge_public_key.as_deref().unwrap_or("None")
@@ -684,20 +684,22 @@ fn cmd_setup(parsed: &Parsed) -> Result<i32, CliError> {
     let destination = config_path(parsed.config.as_deref());
     ensure_config(&destination)?;
     let current = load_config(&destination).ok();
-    let default_relay = match &current {
-        Some(current) => current.bridge.relay_url.clone(),
-        None => {
-            nonempty_env("BUZZ_RELAY_URL").unwrap_or_else(|| "http://localhost:3000".to_string())
-        }
-    };
+    let default_relay = current
+        .as_ref()
+        .map(|current| current.bridge.relay_url.clone())
+        .filter(|value| !value.is_empty())
+        .or_else(|| nonempty_env("BUZZ_RELAY_URL"));
 
     println!("buzzr setup");
     println!("Your human private key is never requested or used.\n");
-    let relay = ask("Buzz relay URL", Some(&default_relay))?;
+    let relay = ask("Buzz relay URL", default_relay.as_deref())?;
     let current_human = current
         .as_ref()
         .and_then(|current| current.human_public_key());
-    let human_pubkey = ask("Your Buzz public key (64 hex)", current_human.as_deref())?;
+    let human_pubkey = ask(
+        "Your Buzz public key (npub or 64 hex)",
+        current_human.as_deref(),
+    )?;
     let compose_file = ask("Buzz docker-compose.yml", Some("~/buzz/docker-compose.yml"))?;
     let agent_secrets = ask(
         "Existing agent dotenv (optional; Enter to generate every missing identity)",
@@ -748,6 +750,10 @@ fn cmd_doctor(parsed: &Parsed) -> Result<i32, CliError> {
     );
     println!("Relay: {}", config.bridge.relay_url);
     print!("{}", credential_summary(&config));
+    if config.bridge.relay_url.trim().is_empty() {
+        println!("Result: NOT READY — bridge.relay_url is missing; run `buzzr setup`");
+        return Ok(1);
+    }
     let (bridge_key, bridge_auth) = config.bridge_credentials();
     let bridge_public_key = config
         .bridge
@@ -1231,7 +1237,7 @@ fn flag_specs(name: &str) -> &'static [FlagSpec] {
             "--owner-pubkey", "PUBKEY", true, false, "owner public key for owner-only inbound routing";
         ),
         "bootstrap" => spec!(
-            "--human-pubkey", "PUBKEY", true, false, "human controller's 64-character public key";
+            "--human-pubkey", "PUBKEY", true, false, "human controller's npub or 64-character hex public key";
             "--relay", "RELAY", true, false, "public Buzz relay URL";
             "--compose-file", "PATH", true, false, "local Buzz docker-compose.yml";
             "--managed-secrets-file", "PATH", true, false, "private dotenv buzzr may create/update (default: plugin config dir/secrets.env)";

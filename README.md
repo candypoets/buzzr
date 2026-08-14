@@ -28,7 +28,7 @@ herdr plugin link "$PWD"
 herdr plugin pane open --plugin buzzr --entrypoint setup
 ```
 
-The setup pane asks for the relay URL, your 64-character public key, and the
+The setup pane asks for the relay URL, your `npub` (or 64-character hex public key), and the
 local Buzz `docker-compose.yml`. It also offers an optional existing mode-`0600`
 agent dotenv; press Enter to generate every missing identity. It provisions the
 bridge, starts the routing daemon, and finishes by telling you to open Buzz and
@@ -62,7 +62,7 @@ must be explicit and every subsequent direct command must reuse the same pair:
 
 ```bash
 ./bin/buzzr --config /path/to/config.toml --state-dir /path/to/state bootstrap \
-  --human-pubkey <64-hex-pubkey> \
+  --human-pubkey <npub-or-64-hex-pubkey> \
   --relay wss://buzz.example.com \
   --compose-file ~/buzz/docker-compose.yml
 ./bin/buzzr --config /path/to/config.toml --state-dir /path/to/state daemon
