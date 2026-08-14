@@ -1,0 +1,45 @@
+[package]
+name = "buzzr"
+version = "0.5.0"
+edition = "2021"
+description = "Mirror Herdr Spaces and their live agents into Buzz channels."
+
+[lib]
+name = "buzzr"
+path = "src/lib.rs"
+
+[[bin]]
+name = "buzzr"
+path = "src/main.rs"
+
+[features]
+# Statically link the classic zlib C implementation (for musl release
+# builds). `stock-zlib` builds the canonical zlib from source, keeping the
+# deflate output stable across local and release builds.
+static-zlib = ["dep:libz-sys", "libz-sys/static", "libz-sys/stock-zlib"]
+
+[dependencies]
+libz-sys = { version = "1", optional = true }
+anyhow = "1"
+hex = "0.4"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+png = "0.17"
+toml = { version = "0.8", features = ["preserve_order"] }
+fs2 = "0.4"
+flate2 = { version = "1", features = ["zlib"] }
+crc32fast = "1"
+tempfile = "3"
+libc = "0.2"
+nostr = "0.44"
+tokio = { version = "1", features = ["rt", "macros", "time"] }
+tokio-tungstenite = { version = "0.29", features = ["rustls-tls-native-roots"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+futures-util = "0.3"
+wait-timeout = "0.2"
+uuid = "1"
+
+[dev-dependencies]
+tempfile = "3"

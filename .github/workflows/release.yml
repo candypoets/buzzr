@@ -1,0 +1,93 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    # The tag must match both manifests, or plugin installs would request
+    # release assets that do not exist.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify tag matches Cargo.toml and herdr-plugin.toml versions
+        run: |
+          set -eu
+          tag="${GITHUB_REF_NAME#v}"
+          cargo_version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)"
+          plugin_version="$(sed -n 's/^version = "\(.*\)"/\1/p' herdr-plugin.toml | head -n 1)"
+          echo "tag=$tag cargo=$cargo_version plugin=$plugin_version"
+          test -n "$cargo_version"
+          test "$tag" = "$cargo_version"
+          test "$tag" = "$plugin_version"
+
+  verify:
+    # Tags are the releases users install; gate them on the full test battery.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo test --all-targets --locked
+
+  build:
+    name: ${{ matrix.platform }}
+    needs: [check, verify]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux artifacts are fully static musl binaries (no glibc/libz
+          # baseline), with classic zlib built from source via static-zlib.
+          - { os: ubuntu-latest, platform: linux-x86_64, target: x86_64-unknown-linux-musl, features: static-zlib }
+          - { os: ubuntu-24.04-arm, platform: linux-aarch64, target: aarch64-unknown-linux-musl, features: static-zlib }
+          - { os: macos-15-intel, platform: macos-x86_64, target: x86_64-apple-darwin, features: "" }
+          - { os: macos-latest, platform: macos-aarch64, target: aarch64-apple-darwin, features: "" }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Install musl toolchain
+        if: endsWith(matrix.target, '-musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Build
+        run: |
+          args=(--release --locked --target "${{ matrix.target }}")
+          if [ -n "${{ matrix.features }}" ]; then args+=(--features "${{ matrix.features }}"); fi
+          cargo build "${args[@]}"
+      - name: Package
+        run: |
+          asset="buzzr-${GITHUB_REF_NAME}-${{ matrix.platform }}"
+          cp "target/${{ matrix.target }}/release/buzzr" "$asset"
+          shasum -a 256 "$asset" > "$asset.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: buzzr-${{ matrix.platform }}
+          path: |
+            buzzr-${{ github.ref_name }}-${{ matrix.platform }}
+            buzzr-${{ github.ref_name }}-${{ matrix.platform }}.sha256
+
+  publish:
+    # Single job creates the release once every platform has built, so the
+    # release never appears partially populated.
+    name: publish
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: buzzr-*
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: buzzr-*
+          fail_on_unmatched_files: true

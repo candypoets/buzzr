@@ -1,7 +1,6 @@
 [bridge]
 relay_url = "wss://buzz.nuts.cash"
 buzz_bin = "buzz"
-nak_bin = "nak"
 
 # `buzzr setup` fills these in. Only the human PUBLIC key is needed. buzzr
 # generates its bridge and missing agent keys into its private secrets file.
@@ -22,7 +21,12 @@ channel_description = "Mirrored from Herdr Space {space}."
 sync_enabled = false
 routing_enabled = false
 auto_provision_agents = false
+# Only channels recorded as created by buzzr are eligible. Adopted and legacy
+# channels are always preserved. If the Space later reappears, buzzr
+# unarchives its original created channel.
 archive_closed_spaces = false
+# When enabled, only departed bot memberships that state proves buzzr added
+# are removed. Manual role changes and legacy/unknown memberships are kept.
 remove_departed_agents = false
 
 # Every managed identity gets a layered avatar from the bundled Recraft pack.

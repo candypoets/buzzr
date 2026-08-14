@@ -5,6 +5,11 @@ min_herdr_version = "0.8.0"
 description = "Mirror Herdr Spaces and their live agents into Buzz channels."
 platforms = ["linux", "macos"]
 
+# GitHub installs only: fetch the prebuilt binary (see scripts/install.sh).
+# `herdr plugin link` skips this; developers run `cargo build --release`.
+[[build]]
+command = ["bash", "scripts/install.sh"]
+
 [[startup]]
 command = ["bin/buzzr", "daemon"]
 
@@ -48,6 +53,21 @@ id = "start"
 title = "Start buzzr routing daemon"
 command = ["bin/buzzr", "daemon"]
 
+[[actions]]
+id = "stop"
+title = "Stop buzzr routing daemon"
+command = ["bin/buzzr", "stop"]
+
+[[actions]]
+id = "deactivate"
+title = "Stop and deactivate buzzr"
+command = ["bin/buzzr", "deactivate"]
+
+[[actions]]
+id = "deprovision"
+title = "Preview safe Buzz cleanup"
+command = ["bin/buzzr", "deprovision"]
+
 [[panes]]
 id = "setup"
 title = "Set up buzzr"
@@ -59,3 +79,9 @@ id = "status"
 title = "buzzr"
 placement = "overlay"
 command = ["bin/buzzr", "dashboard"]
+
+[[panes]]
+id = "cleanup"
+title = "Safely deprovision buzzr"
+placement = "overlay"
+command = ["bin/buzzr", "deprovision", "--interactive"]

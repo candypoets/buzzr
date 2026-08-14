@@ -1,0 +1,4 @@
+interface:
+  display_name: "Buzzr"
+  short_description: "Safely operate the Herdr–Buzz bridge"
+  default_prompt: "Use $buzzr to set up, operate, or safely remove my Herdr–Buzz bridge."

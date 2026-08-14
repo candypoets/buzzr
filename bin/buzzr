@@ -1,6 +1,22 @@
 #!/usr/bin/env sh
+# buzzr entrypoint: exec the installed binary, falling back to a local
+# release build in a linked development checkout.
 set -eu
 
-PLUGIN_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-export PYTHONPATH="$PLUGIN_ROOT${PYTHONPATH:+:$PYTHONPATH}"
-exec python3 -m herdr_buzz.cli "$@"
+case "$0" in
+    */*) DIR=${0%/*} ;;
+    *) DIR=. ;;
+esac
+DIR=$(CDPATH= cd -- "$DIR" && pwd)
+
+if [ -x "$DIR/buzzr-bin" ]; then
+    exec "$DIR/buzzr-bin" "$@"
+fi
+if [ -x "$DIR/../target/release/buzzr" ]; then
+    exec "$DIR/../target/release/buzzr" "$@"
+fi
+
+echo "buzzr: no binary found." >&2
+echo "  Install:  herdr plugin install candypoets/buzzr --yes" >&2
+echo "  Develop:  cargo build --release && herdr plugin link <checkout>" >&2
+exit 1

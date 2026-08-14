@@ -1,9 +1,5 @@
 config.toml
 *.env
 .state/
-__pycache__/
-*.pyc
-.coverage
-.pytest_cache/
-.venv/
-venv/
+target/
+bin/buzzr-bin
