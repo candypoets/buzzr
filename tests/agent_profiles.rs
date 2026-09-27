@@ -106,6 +106,7 @@ fn report() -> SyncReport {
 struct RecordingPublisher {
     profiles: RefCell<Vec<(String, String, Option<String>)>>,
     agent_profiles: RefCell<Vec<Value>>,
+    owner_tags: RefCell<Vec<Option<String>>>,
 }
 
 impl ProfilePublisher for RecordingPublisher {
@@ -116,7 +117,11 @@ impl ProfilePublisher for RecordingPublisher {
         name: &str,
         about: &str,
         picture: Option<&str>,
+        auth_tag: Option<&str>,
     ) -> Result<(), CommandError> {
+        self.owner_tags
+            .borrow_mut()
+            .push(auth_tag.map(str::to_string));
         self.profiles.borrow_mut().push((
             name.to_string(),
             about.to_string(),
@@ -130,7 +135,11 @@ impl ProfilePublisher for RecordingPublisher {
         _relay_url: &str,
         _private_key: &str,
         content: &Value,
+        auth_tag: Option<&str>,
     ) -> Result<(), CommandError> {
+        self.owner_tags
+            .borrow_mut()
+            .push(auth_tag.map(str::to_string));
         self.agent_profiles.borrow_mut().push(content.clone());
         Ok(())
     }
@@ -253,6 +262,45 @@ fn nobody_is_a_valid_empty_allowlist_for_desktop() {
 }
 
 // --- sync tests from AgentProfilePublishingTests ---
+
+#[test]
+fn attestation_changes_republish_both_profiles_without_waiting_for_expiry() {
+    let mut config = sol_only(identity_config("owner-only"));
+    config.bridge.avatars_enabled = false;
+    config.identities.get_mut("sol").unwrap().auth_tag_env = Some("SOL_AUTH".into());
+    let publisher = RecordingPublisher::default();
+    let (_, make_uploader) = uploader_factory(json!({}));
+    let deps = ProfileSyncDeps {
+        publisher: &publisher,
+        load_pack: load_avatar_pack,
+        make_uploader,
+    };
+    let mut state = json!({"identity_profiles": {}, "avatar_uploads": {}, "agent_profiles": {}});
+    for value in ["first", "first", "rotated"] {
+        config.secrets.insert("SOL_AUTH".into(), value.into());
+        sync_identity_profiles(&config, &mut state, &mut report(), true, 1000, None, &deps);
+        sync_agent_profiles(
+            &config,
+            &Topology::default(),
+            &mut state,
+            &mut report(),
+            true,
+            1000,
+            &publisher,
+        );
+    }
+    assert_eq!(publisher.profiles.borrow().len(), 2);
+    assert_eq!(publisher.agent_profiles.borrow().len(), 2);
+    assert_eq!(
+        *publisher.owner_tags.borrow(),
+        vec![
+            Some("first".into()),
+            Some("first".into()),
+            Some("rotated".into()),
+            Some("rotated".into())
+        ]
+    );
+}
 
 #[test]
 fn sync_publishes_changed_content_once_and_caches_it() {

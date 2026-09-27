@@ -143,9 +143,23 @@ fn reply_requires_token_and_content() {
         parsed.command,
         Command::Reply {
             token: "t".to_string(),
-            content: "-".to_string()
+            content: "-".to_string(),
+            progress: false,
         }
     );
+    let parsed = parse(&args(&[
+        "reply",
+        "--token",
+        "t",
+        "--content",
+        "-",
+        "--progress",
+    ]))
+    .unwrap();
+    assert!(matches!(
+        parsed.command,
+        Command::Reply { progress: true, .. }
+    ));
 }
 
 #[test]

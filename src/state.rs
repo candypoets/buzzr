@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use fs2::FileExt;
 use serde_json::{json, Value};
 
-pub const STATE_VERSION: u64 = 5;
+pub const STATE_VERSION: u64 = 6;
 pub const STATE_MARKER: &str = "buzzr-state-v1\n";
 
 /// Fresh state document with all top-level keys present.
@@ -22,6 +22,11 @@ pub fn default_state() -> Value {
         "last_seen": {},
         "processed": [],
         "pending": [],
+        "role_requests": {},
+        "role_cursors": {},
+        "role_status": {},
+        "role_poll_errors": {},
+        "task_operations": {},
         "reply_contexts": {},
         "managed_resources": {
             "identities": {},
@@ -147,6 +152,12 @@ impl StateStore {
                         format!("{} has no numeric state version", self.path.display()),
                     )
                 })?;
+            if version >= 6 && !value.get("task_operations").is_some_and(Value::is_object) {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "invalid native task journal",
+                ));
+            }
             if version >= 4 {
                 let resources = value
                     .get("managed_resources")
@@ -409,7 +420,7 @@ mod tests {
     fn default_state_has_all_keys() {
         let state = default_state();
         let map = state.as_object().unwrap();
-        assert_eq!(map.len(), 12);
+        assert_eq!(map.len(), 17);
         assert_eq!(map["version"], json!(STATE_VERSION));
         assert!(map["last_error"].is_null());
         assert!(map["processed"].as_array().unwrap().is_empty());

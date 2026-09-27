@@ -164,6 +164,29 @@ fn profile_event_includes_the_picture_without_leaking_the_secret() {
 }
 
 #[test]
+fn configured_owner_tag_is_on_both_signed_profile_kinds() {
+    use buzzr::clients::nostr::attest_profile_event;
+    let tag = serde_json::json!(["auth", "b".repeat(64), "", "c".repeat(128)]);
+    for event in [
+        build_profile_event(SOL_PRIVATE, "Sol", "Agent", None).unwrap(),
+        build_agent_profile_event(SOL_PRIVATE, &serde_json::json!({"status":"offline"})).unwrap(),
+    ] {
+        let content = event.content.clone();
+        let signed = attest_profile_event(event, SOL_PRIVATE, Some(&tag.to_string())).unwrap();
+        signed.verify().unwrap();
+        assert_eq!(signed.content, content);
+        assert_eq!(
+            serde_json::to_value(signed.tags).unwrap(),
+            serde_json::json!([tag])
+        );
+    }
+    let event = build_profile_event(SOL_PRIVATE, "Sol", "Agent", None).unwrap();
+    let error =
+        attest_profile_event(event, SOL_PRIVATE, Some("malformed-private-input")).unwrap_err();
+    assert!(!error.to_string().contains("malformed-private-input"));
+}
+
+#[test]
 fn agent_profile_event_is_kind_10100_without_leaking_the_secret() {
     // Mirrors test_nak_publishes_kind_10100_without_putting_secret_in_argv.
     let content = serde_json::json!({"name": "Sol", "channel_ids": ["channel-id"]});

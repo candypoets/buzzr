@@ -290,3 +290,7 @@ bridge still never needs the human private key.
 - Agent ownership writes are idempotent and refuse to replace another owner.
 - A runtime lock prevents duplicate routing daemons.
 - Uninstall is never an external-resource deletion hook.
+
+### Persistent project roles (opt-in)
+
+Keep roles visible and mentionable while offline, with a durable inbox and a configurable wake-on-mention launcher. The optional Herdr Projects adapter selects a native runtime through role-specific quota policy only when a new session is needed. See [configuration, protocol, recovery and rollout limits](docs/persistent-roles.md). Existing live-session mirroring remains the default.

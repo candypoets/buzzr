@@ -110,7 +110,7 @@ fn custom_pack_checks_asset_integrity() {
     .unwrap();
 
     let pack = load_avatar_pack("ignored", Some(root)).expect("custom pack loads");
-    assert_eq!(pack.assets[0].path, asset);
+    assert_eq!(pack.assets[0].path, asset.canonicalize().unwrap());
 
     std::fs::write(&asset, b"tampered").unwrap();
     assert!(load_avatar_pack("ignored", Some(root)).is_err());

@@ -87,6 +87,7 @@ impl IdentityConfig {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BridgeConfig {
+    pub persistent_roles: std::collections::BTreeMap<String, crate::roles::PersistentRole>,
     pub relay_url: String,
     pub buzz_bin: String,
     pub herdr_bin: String,
@@ -124,6 +125,7 @@ pub struct BridgeConfig {
 impl Default for BridgeConfig {
     fn default() -> Self {
         BridgeConfig {
+            persistent_roles: Default::default(),
             // A relay is intentionally never selected on the user's behalf.
             relay_url: String::new(),
             buzz_bin: "buzz".to_string(),
@@ -821,6 +823,7 @@ pub fn load_config(path: &Path) -> Result<Config, ConfigError> {
         .or_else(|| bridge_raw.get("owner_auth_tag_env"));
 
     let bridge = BridgeConfig {
+        persistent_roles: crate::roles::parse(raw.get("persistent_roles"))?,
         relay_url: external("BUZZR_RELAY_URL")
             .filter(|value| !value.is_empty())
             .or_else(|| external("BUZZ_RELAY_URL").filter(|value| !value.is_empty()))

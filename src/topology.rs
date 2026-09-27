@@ -408,7 +408,18 @@ pub fn build_topology(snapshot: &Value, config: &Config) -> Topology {
         spaces.push(space);
     }
 
-    Topology { spaces, warnings }
+    // Persistent identities are routed only through their configured launcher.
+    // Do not alias-match them onto unrelated live sessions.
+    for space in &mut spaces {
+        space.agents.retain(|a| {
+            !a.identity_id
+                .as_ref()
+                .is_some_and(|id| config.bridge.persistent_roles.contains_key(id))
+        });
+    }
+    let mut topology = Topology { spaces, warnings };
+    crate::roles::add_topology(&mut topology, config);
+    topology
 }
 
 /// Lowercased pubkeys mentioned in an event's "p" tags.

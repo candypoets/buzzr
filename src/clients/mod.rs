@@ -139,6 +139,7 @@ pub(crate) fn run_with_timeout(
 ///
 /// Injection point for profile publishing tests and alternate implementations.
 pub trait ProfilePublisher {
+    #[allow(clippy::too_many_arguments)]
     fn publish_profile(
         &self,
         relay_url: &str,
@@ -146,6 +147,7 @@ pub trait ProfilePublisher {
         name: &str,
         about: &str,
         picture: Option<&str>,
+        auth_tag: Option<&str>,
     ) -> Result<(), CommandError>;
 
     fn publish_agent_profile(
@@ -153,6 +155,7 @@ pub trait ProfilePublisher {
         relay_url: &str,
         private_key: &str,
         content: &serde_json::Value,
+        auth_tag: Option<&str>,
     ) -> Result<(), CommandError>;
 }
 

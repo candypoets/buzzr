@@ -3,3 +3,5 @@ config.toml
 .state/
 target/
 bin/buzzr-bin
+
+__pycache__/

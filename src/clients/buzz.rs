@@ -406,7 +406,10 @@ impl BuzzClient {
             None,
             30,
         )?;
-        Ok(Self::as_array(result))
+        match result {
+            Value::Array(items) => Ok(items),
+            _ => Err(CommandError("invalid Buzz messages response".into())),
+        }
     }
 
     /// Reply to a message; the content goes over stdin ("--content -").

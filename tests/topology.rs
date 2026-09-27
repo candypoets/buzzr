@@ -165,7 +165,7 @@ fn state_load_migrates_the_schema_version_and_preserves_data() {
     let loaded = StateStore::new(directory.path().to_path_buf())
         .load()
         .unwrap();
-    assert_eq!(loaded["version"], json!(5));
+    assert_eq!(loaded["version"], json!(buzzr::state::STATE_VERSION));
     assert_eq!(loaded["channels"]["w1"]["name"], json!("alpha"));
     assert_eq!(loaded["agent_profiles"], json!({}));
     assert_eq!(loaded["identity_profiles"], json!({}));

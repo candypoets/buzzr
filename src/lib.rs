@@ -12,3 +12,6 @@ pub mod service;
 pub mod state;
 pub mod sync;
 pub mod topology;
+
+pub mod roles;
+pub mod tasks;

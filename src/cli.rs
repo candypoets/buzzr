@@ -143,7 +143,22 @@ pub fn state_directory(argument: Option<&str>) -> PathBuf {
 fn load_all(parsed: &Parsed) -> Result<(Config, StateStore, Topology), CliError> {
     let config = load_config(&config_path(parsed.config.as_deref()))?;
     let store = StateStore::new(state_directory(parsed.state_dir.as_deref()));
-    let snapshot = HerdrClient::new(config.bridge.herdr_bin.clone()).snapshot()?;
+    let snapshot = match HerdrClient::new(config.bridge.herdr_bin.clone()).snapshot() {
+        Ok(snapshot) => snapshot,
+        Err(_)
+            if !config.bridge.persistent_roles.is_empty()
+                && matches!(
+                    parsed.command,
+                    Command::Plan { .. }
+                        | Command::Status { .. }
+                        | Command::Dashboard
+                        | Command::Doctor
+                ) =>
+        {
+            json!({})
+        }
+        Err(error) => return Err(error.into()),
+    };
     let topology = build_topology(&snapshot, &config);
     Ok((config, store, topology))
 }
@@ -328,6 +343,7 @@ pub fn status_payload(config: &Config, state: &Value, topology: &Topology) -> Va
             .filter(|agent| agent.identity_id.is_some())
             .count(),
         "channels": state.get("channels").cloned().unwrap_or_else(|| json!({})),
+        "persistent_roles": if config.bridge.persistent_roles.is_empty() { Value::Null } else { crate::roles::summary(state) },
         "profiled_identities": object_len("identity_profiles"),
         "uploaded_avatars": object_len("avatar_uploads"),
         "last_reconcile_at": state.get("last_reconcile_at").cloned().unwrap_or(Value::Null),
@@ -348,6 +364,9 @@ pub fn render_status_text(payload: &Value) -> String {
             .to_string()
     };
     let mut out = format!("Relay: {}\n", text("relay_url"));
+    if let Some(roles) = payload.get("persistent_roles").filter(|v| !v.is_null()) {
+        out.push_str(&format!("Persistent roles: {roles}\n"));
+    }
     out.push_str(&format!("Credentials: {}\n", text("credential_source")));
     out.push_str(&format!(
         "Topology: {} Spaces, {} agents\n",
@@ -867,6 +886,35 @@ fn cmd_refresh_profiles(parsed: &Parsed, reupload: bool) -> Result<i32, CliError
     Ok(0)
 }
 
+fn cmd_role_resolve(parsed: &Parsed, request: &str, disposition: &str) -> Result<i32, CliError> {
+    if !["retry", "delivered"].contains(&disposition) {
+        return Err(CliError::Value(
+            "disposition must be retry or delivered".into(),
+        ));
+    }
+    let config = load_config(&config_path(parsed.config.as_deref()))?;
+    let store = StateStore::new(state_directory(parsed.state_dir.as_deref()));
+    store.with_lock(|| -> Result<(), CliError> {
+        let mut state = store.load_strict()?;
+        let entry = state["role_requests"].get(request).cloned().ok_or_else(|| CliError::Value("unknown request".into()))?;
+        if entry["status"] == "delivered" { return Ok(()); }
+        let role = config.bridge.persistent_roles.get(entry["role_id"].as_str().unwrap_or_default()).ok_or_else(|| CliError::Value("role is no longer configured".into()))?;
+        let result = crate::roles::call_launcher(&config, role, &json!({"version":1,"op":"resolve","project":role.project,"role":role.role,"request_id":request,"disposition":disposition}))?;
+        let expected = if disposition == "retry" { "queued" } else { "delivered" };
+        if result["state"] != expected { return Err(CliError::Value("launcher did not confirm recovery; request retained".into())); }
+        if let Some(token) = entry["reply_token"].as_str() {
+            if let Some(contexts) = state["reply_contexts"].as_object_mut() { contexts.remove(token); }
+        }
+        state["role_requests"][request]["status"] = json!(expected);
+        state["role_requests"][request]["not_before"] = json!(0);
+        state["role_requests"][request]["notice"] = Value::Null;
+        store.save(&state)?;
+        Ok(())
+    })??;
+    println!("Role request resolved: {disposition}");
+    Ok(0)
+}
+
 fn cmd_status(parsed: &Parsed, as_json: bool) -> Result<i32, CliError> {
     let (config, store, topology) = load_all(parsed)?;
     let state = store.load()?;
@@ -1004,7 +1052,25 @@ fn cmd_deprovision(parsed: &Parsed, args: &DeprovisionArgs) -> Result<i32, CliEr
     Ok(0)
 }
 
-fn cmd_reply(token: &str, content: &str) -> Result<i32, CliError> {
+fn cmd_task(token: &str, request: &str) -> Result<i32, CliError> {
+    let text = if request == "-" {
+        let mut text = String::new();
+        std::io::stdin().take(70_000).read_to_string(&mut text)?;
+        text
+    } else {
+        request.to_string()
+    };
+    if text.len() > 65_535 {
+        return Err(CliError::Value("task request is too large".into()));
+    }
+    let payload: Value =
+        serde_json::from_str(&text).map_err(|_| CliError::Value("invalid task JSON".into()))?;
+    let result = crate::service::queue_task(token, payload, Duration::from_secs(90))?;
+    println!("{}", result);
+    Ok(if result["ok"] == true { 0 } else { 1 })
+}
+
+fn cmd_reply(token: &str, content: &str, progress: bool) -> Result<i32, CliError> {
     let content = if content == "-" {
         let mut buffer = String::new();
         std::io::stdin().read_to_string(&mut buffer)?;
@@ -1012,7 +1078,11 @@ fn cmd_reply(token: &str, content: &str) -> Result<i32, CliError> {
     } else {
         content.to_string()
     };
-    let result = queue_reply(token, &content, Duration::from_secs(30))?;
+    let result = if progress {
+        crate::service::queue_progress(token, &content, Duration::from_secs(30))?
+    } else {
+        queue_reply(token, &content, Duration::from_secs(30))?
+    };
     println!(
         "{}",
         serde_json::to_string(&result).map_err(|error| CliError::Value(error.to_string()))?
@@ -1037,6 +1107,14 @@ pub struct Parsed {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Command {
+    Task {
+        token: String,
+        request: String,
+    },
+    RoleResolve {
+        request: String,
+        disposition: String,
+    },
     InitConfig {
         force: bool,
     },
@@ -1065,6 +1143,7 @@ pub enum Command {
     Reply {
         token: String,
         content: String,
+        progress: bool,
     },
 }
 
@@ -1123,7 +1202,15 @@ pub enum ParseFailure {
     Error(String),
 }
 
-const SUBCOMMANDS: [(&str, &str); 15] = [
+const SUBCOMMANDS: [(&str, &str); 17] = [
+    (
+        "role-resolve",
+        "resolve a retained role request after checking the native session",
+    ),
+    (
+        "task",
+        "read or update native tasks through the credential-owning bridge",
+    ),
     ("init-config", "write a safe config template"),
     (
         "configure",
@@ -1227,6 +1314,9 @@ fn flag_specs(name: &str) -> &'static [FlagSpec] {
         };
     }
     match name {
+        "role-resolve" => {
+            spec!("--request", "ID", true, true, "request id from status"; "--disposition", "retry|delivered", true, true, "operator-confirmed outcome")
+        }
         "init-config" => spec!("--force", "", false, false, "overwrite an existing config"),
         "configure" => spec!(
             "--relay", "RELAY", true, false, "Buzz relay URL";
@@ -1278,6 +1368,11 @@ fn flag_specs(name: &str) -> &'static [FlagSpec] {
         "reply" => spec!(
             "--token", "TOKEN", true, true, "reply token from the bridge prompt";
             "--content", "CONTENT", true, true, "reply text, or - to read stdin";
+            "--progress", "", false, false, "post a project update without consuming the token";
+        ),
+        "task" => spec!(
+            "--token", "TOKEN", true, true, "role reply token from an authorized bridge request";
+            "--request", "JSON", true, true, "task operation JSON, or - to read stdin";
         ),
         _ => &[],
     }
@@ -1400,6 +1495,12 @@ fn parse_command(command_name: &str, args: &[String]) -> Result<Command, ParseFa
             buzz_bin: last_value(&flags, "--buzz-bin").map(str::to_string),
             nak_bin: last_value(&flags, "--nak-bin").map(str::to_string),
         }),
+        "role-resolve" => Command::RoleResolve {
+            request: last_value(&flags, "--request").unwrap_or_default().into(),
+            disposition: last_value(&flags, "--disposition")
+                .unwrap_or_default()
+                .into(),
+        },
         "setup" => Command::Setup,
         "doctor" => Command::Doctor,
         "plan" => Command::Plan {
@@ -1439,12 +1540,17 @@ fn parse_command(command_name: &str, args: &[String]) -> Result<Command, ParseFa
         }
         "daemon" => Command::Daemon,
         "reply" => Command::Reply {
+            progress: has_flag(&flags, "--progress"),
             token: last_value(&flags, "--token")
                 .unwrap_or_default()
                 .to_string(),
             content: last_value(&flags, "--content")
                 .unwrap_or_default()
                 .to_string(),
+        },
+        "task" => Command::Task {
+            token: last_value(&flags, "--token").unwrap_or_default().into(),
+            request: last_value(&flags, "--request").unwrap_or_default().into(),
         },
         _ => unreachable!("parse_command only called for known subcommands"),
     };
@@ -1516,6 +1622,10 @@ pub fn parse(args: &[String]) -> Result<Parsed, ParseFailure> {
 
 fn run(parsed: &Parsed) -> Result<i32, CliError> {
     match &parsed.command {
+        Command::RoleResolve {
+            request,
+            disposition,
+        } => cmd_role_resolve(parsed, request, disposition),
         Command::InitConfig { force } => cmd_init(parsed, *force),
         Command::Configure(args) => cmd_configure(parsed, args),
         Command::Bootstrap(args) => run_bootstrap(parsed, args),
@@ -1530,7 +1640,12 @@ fn run(parsed: &Parsed) -> Result<i32, CliError> {
         Command::Deactivate => cmd_deactivate(parsed),
         Command::Deprovision(args) => cmd_deprovision(parsed, args),
         Command::Daemon => cmd_daemon(parsed),
-        Command::Reply { token, content } => cmd_reply(token, content),
+        Command::Reply {
+            token,
+            content,
+            progress,
+        } => cmd_reply(token, content, *progress),
+        Command::Task { token, request } => cmd_task(token, request),
     }
 }
 

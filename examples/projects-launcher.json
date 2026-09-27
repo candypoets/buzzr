@@ -1,0 +1,25 @@
+{
+  "herdr_bin": "/usr/local/bin/herdr",
+  "projects_bin": "/usr/local/bin/herdr-projects",
+  "projects_root": "/home/example/.herdr-projects",
+  "socket": "/home/example/.config/herdr/herdr.sock",
+  "state_dir": "/home/example/.local/state/buzzr-projects",
+  "selector": ["/home/example/.local/bin/ag-role", "--config", "/home/example/.config/herdr-model-lanes/roles.toml"],
+  "native_launchers": {"claude": "/home/example/.local/bin/claude", "codex": "/home/example/.local/bin/herdr-codex"},
+  "bindings": {
+    "demo/studio-lead": {
+      "mode": "coordinator",
+      "startup_policy": false,
+      "policy_role": "studio-lead",
+      "profiles": {"primary-route": "native-primary", "fallback-route": "native-fallback"}
+    },
+    "demo/researcher": {
+      "mode": "thread",
+      "startup_policy": false,
+      "policy_role": "researcher",
+      "profiles": {"research-route": "native-research"},
+      "instructions_file": "/home/example/role-library/researcher/AGENTS.md",
+      "worker_startup_verified": false
+    }
+  }
+}
